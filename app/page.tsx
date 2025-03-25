@@ -2,7 +2,6 @@
 import Image from "next/image";
 
 import { createClient } from "@supabase/supabase-js";
-import { GetServerSideProps } from "next";
 import { useEffect, useState } from "react";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -47,7 +46,7 @@ export default function Home() {
             >
                 <Image src={"/logo.png"} height={500} width={500} alt="Logo" />
                 <div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
-                    Guess today's TFT champion!
+                    Guess today&apos;s TFT champion!
                 </div>
                 <div className="flex flex-row w-1/2 justify-center items-center relative mb-4">
                     <input
@@ -181,12 +180,12 @@ export default function Home() {
                                     guess={
                                         { 0: "Male", 1: "Female", 2: "Other" }[
                                             gender
-                                        ]
+                                        ] || "Unknown"
                                     }
                                     correctValue={
                                         { 0: "Male", 1: "Female", 2: "Other" }[
                                             answer.gender
-                                        ]
+                                        ] || "Unknown"
                                     }
                                 />
                                 <Tile
@@ -223,7 +222,7 @@ export default function Home() {
                     <div className="absolute top-0 left-0 w-screen h-screen bg-black/50 flex flex-row items-center justify-center text-center backdrop-blur-md">
                         <div className="left-1/2 top-1/2 bg-red-400 flex items-center justify-center py-24 px-24">
                             Congratulations! You took {guesses.length} guesses
-                            to guess today's TFTdle champion: {answer.name}
+                            to guess today&apos;s TFTdle champion: {answer.name}
                         </div>
                     </div>
                 )}

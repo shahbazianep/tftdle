@@ -1,17 +1,19 @@
-import { Champion } from "@/assets/types/types";
-
 export default function Tile({
     guess,
     correctValue,
 }: {
-    guess: any;
-    correctValue: any;
+    guess: number | string | string[];
+    correctValue: number | string | string[];
 }) {
     return (
         <div
             className={`w-20 h-20 ${
                 guess.constructor === Array &&
-                guess.some((element) => correctValue.includes(element))
+                guess.some(
+                    (element) =>
+                        Array.isArray(correctValue) &&
+                        correctValue.includes(element)
+                )
                     ? "bg-[#FFB131]"
                     : guess === correctValue
                     ? "bg-[#A3C751]"
