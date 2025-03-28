@@ -6,18 +6,18 @@ import { useEffect, useState } from "react";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-import { Champion, Graph, Stats } from "@/assets/types/types";
+import { Champion, Stats } from "@/assets/types/types";
 import Tile from "@/components/Tile";
 import Head from "next/head";
 import { IoIosStats } from "react-icons/io";
 import { IoClose } from "react-icons/io5";
 
-const attributeWeights: { [key: string]: number } = {
-    set: 5, // Example: Set is relatively important
-    cost: 4, // Cost is somewhat important
-    gender: 3, // Gender is less differentiating
-    range: 1, // Range is moderately important
-};
+// const attributeWeights: { [key: string]: number } = {
+//     set: 5, // Example: Set is relatively important
+//     cost: 4, // Cost is somewhat important
+//     gender: 3, // Gender is less differentiating
+//     range: 1, // Range is moderately important
+// };
 
 export default function Home() {
     const [champs, setChamps] = useState<Champion[]>();
@@ -31,8 +31,8 @@ export default function Home() {
     const [showStats, setShowStats] = useState<boolean>(false);
     const [showIndicators, setShowIndicators] = useState<boolean>(true);
     const [stats, setStats] = useState<Stats>();
-    const [graph, setGraph] = useState<Graph>();
-    const [scores, setScores] = useState<number[]>();
+    // const [graph, setGraph] = useState<Graph>();
+    // const [scores, setScores] = useState<number[]>();
 
     function getTimeUntilMidnight() {
         const now = new Date();
@@ -65,266 +65,198 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        if (finished) {
-            const stats = updateStats(guesses.length);
-            setStats(stats);
-        }
-    }, [finished]);
+    // const filterGraph = (graph: Graph, guess: Champion) => {
+    //     const correctSet = guess.set === answer?.set;
+    //     const correctCost = guess.cost === answer?.cost;
+    //     const correctGender = guess.gender === answer?.gender;
+    //     const correctRange = guess.range === answer?.range;
+    //     const correctTraits =
+    //         guess.traits === answer?.traits
+    //             ? 2
+    //             : guess.traits.some((trait) => answer?.traits.includes(trait))
+    //             ? 1
+    //             : 0;
 
-    useEffect(() => {
-        if (champs) {
-            setAnswer(champs[Math.floor(Math.random() * champs.length)]);
-            setFilteredChamps(champs);
-            setGraph(createGraph(champs));
-        }
-    }, [champs]);
+    //     graph.edges.forEach((value, key, map) => {
+    //         const champion = graph.nodes.find((champ) => champ.id === key);
+    //         if (!champion) return;
 
-    useEffect(() => {
-        if (champs && graph) {
-            const filteredGraph = createGraph(
-                champs.filter((champ) => {
-                    const g = filterGraph(graph, champs[guesses[0]]);
-                    return g.nodes.includes(champ);
-                })
-            );
-            console.log(filteredGraph);
-            setGraph(filteredGraph);
-            const remainingChamps = champs.filter((champ) =>
-                filteredGraph.nodes.includes(champ)
-            );
+    //         const isValid =
+    //             correctSet === (champion.set === guess.set) &&
+    //             correctCost === (champion.cost === guess.cost) &&
+    //             correctGender === (champion.gender === guess.gender) &&
+    //             correctRange === (champion.range === guess.range) &&
+    //             (correctTraits === 1
+    //                 ? champion.traits.some((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   )
+    //                 : correctTraits === 2
+    //                 ? champion.traits.every((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   )
+    //                 : !champion.traits.some((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   ));
 
-            console.log(
-                calculateNormalizedScore(
-                    champs[guesses[0]],
-                    remainingChamps,
-                    graph
-                )
-            );
-            // const possibleGuesses = champs.filter(
-            //     (_, index) => !guesses.includes(index)
-            // );
+    //         if (!isValid) map.delete(key);
+    //     });
 
-            // const entropy = calculateEntropy(remainingChamps, possibleGuesses);
-            // console.log("Entropy:", entropy);
+    //     graph.nodes = graph.nodes.filter(
+    //         (champion) => (graph.edges.get(champion.id)?.size ?? 0) > 0
+    //     );
 
-            // const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
-            //     remainingChamps,
-            //     {
-            //         set: champs[guesses[guesses.length - 1]].set,
-            //         cost: champs[guesses[guesses.length - 1]].cost,
-            //         gender: champs[guesses[guesses.length - 1]].gender,
-            //         range: champs[guesses[guesses.length - 1]].range,
-            //         traits: champs[guesses[guesses.length - 1]].traits,
-            //     }
-            // );
+    //     return graph;
+    // };
 
-            // console.log(
-            //     calculateScore(champs[guesses[0]], remainingChamps, {
-            //         set: champs[guesses[guesses.length - 1]].set,
-            //         cost: champs[guesses[guesses.length - 1]].cost,
-            //         gender: champs[guesses[guesses.length - 1]].gender,
-            //         range: champs[guesses[guesses.length - 1]].range,
-            //         traits: champs[guesses[guesses.length - 1]].traits,
-            //     })
-            // );
+    // const createGraph = (data: Champion[]) => {
+    //     const graph: Graph = { nodes: data, edges: new Map() };
+    //     data.forEach((champ) => graph.edges.set(champ.id, new Set()));
 
-            // console.log("Best Guess:", bestGuess);
-        }
-    }, [guesses]);
+    //     for (let i = 0; i < data.length; i++) {
+    //         for (let j = i + 1; j < data.length; j++) {
+    //             const A = data[i];
+    //             const B = data[j];
 
-    const filterGraph = (graph: Graph, guess: Champion) => {
-        const correctSet = guess.set === answer?.set;
-        const correctCost = guess.cost === answer?.cost;
-        const correctGender = guess.gender === answer?.gender;
-        const correctRange = guess.range === answer?.range;
-        const correctTraits =
-            guess.traits === answer?.traits
-                ? 2
-                : guess.traits.some((trait) => answer?.traits.includes(trait))
-                ? 1
-                : 0;
+    //             if (
+    //                 A.set === B.set ||
+    //                 A.cost === B.cost ||
+    //                 A.gender === B.gender ||
+    //                 A.range === B.range ||
+    //                 A.traits.some((trait) => B.traits.includes(trait))
+    //             ) {
+    //                 graph.edges.get(A.id)?.add(B.id);
+    //                 graph.edges.get(B.id)?.add(A.id);
+    //             }
+    //         }
+    //     }
+    //     return graph;
+    // };
 
-        graph.edges.forEach((value, key, map) => {
-            const champion = graph.nodes.find((champ) => champ.id === key);
-            if (!champion) return;
+    // const calculateNormalizedScore = (
+    //     guess: Champion,
+    //     remaining: Champion[],
+    //     graph: Graph
+    // ): number => {
+    //     const eliminatedNodes = remaining.filter((champ) => {
+    //         const filteredGraph = filterGraph(graph, guess);
+    //         return !filteredGraph.nodes.includes(champ);
+    //     }).length;
 
-            const isValid =
-                correctSet === (champion.set === guess.set) &&
-                correctCost === (champion.cost === guess.cost) &&
-                correctGender === (champion.gender === guess.gender) &&
-                correctRange === (champion.range === guess.range) &&
-                (correctTraits === 1
-                    ? champion.traits.some((trait) =>
-                          guess.traits.includes(trait)
-                      )
-                    : correctTraits === 2
-                    ? champion.traits.every((trait) =>
-                          guess.traits.includes(trait)
-                      )
-                    : !champion.traits.some((trait) =>
-                          guess.traits.includes(trait)
-                      ));
+    //     console.log(eliminatedNodes);
 
-            if (!isValid) map.delete(key);
-        });
+    //     const maxEliminatedNodes = Math.max(
+    //         ...remaining.map((champ) => {
+    //             const filteredGraph = filterGraph(graph, champ);
+    //             return remaining.length - filteredGraph.nodes.length;
+    //         })
+    //     );
 
-        graph.nodes = graph.nodes.filter(
-            (champion) => (graph.edges.get(champion.id)?.size ?? 0) > 0
-        );
+    //     return maxEliminatedNodes > 0
+    //         ? eliminatedNodes / maxEliminatedNodes
+    //         : 0;
+    // };
 
-        return graph;
-    };
+    // const calculateEntropy = (
+    //     remaining: Champion[],
+    //     possibleGuesses: Champion[]
+    // ): number => {
+    //     let totalEntropy = 0;
+    //     const totalCount = remaining.length;
 
-    const createGraph = (data: Champion[]) => {
-        let graph: Graph = { nodes: data, edges: new Map() };
-        data.forEach((champ) => graph.edges.set(champ.id, new Set()));
+    //     for (const guess of possibleGuesses) {
+    //         const partitions = new Map<string, number>();
 
-        for (let i = 0; i < data.length; i++) {
-            for (let j = i + 1; j < data.length; j++) {
-                const A = data[i];
-                const B = data[j];
+    //         for (const target of remaining) {
+    //             const key =
+    //                 `${target.set === guess.set ? 1 : 0}` +
+    //                 `${target.cost === guess.cost ? 1 : 0}` +
+    //                 `${target.gender === guess.gender ? 1 : 0}` +
+    //                 `${target.range === guess.range ? 1 : 0}` +
+    //                 `${
+    //                     target.traits.filter((trait) =>
+    //                         guess.traits.includes(trait)
+    //                     ).length
+    //                 }`;
 
-                if (
-                    A.set === B.set ||
-                    A.cost === B.cost ||
-                    A.gender === B.gender ||
-                    A.range === B.range ||
-                    A.traits.some((trait) => B.traits.includes(trait))
-                ) {
-                    graph.edges.get(A.id)?.add(B.id);
-                    graph.edges.get(B.id)?.add(A.id);
-                }
-            }
-        }
-        return graph;
-    };
+    //             partitions.set(key, (partitions.get(key) || 0) + 1);
+    //         }
 
-    const calculateNormalizedScore = (
-        guess: Champion,
-        remaining: Champion[],
-        graph: Graph
-    ): number => {
-        const eliminatedNodes = remaining.filter((champ) => {
-            const filteredGraph = filterGraph(graph, guess);
-            return !filteredGraph.nodes.includes(champ);
-        }).length;
+    //         let entropy = 0;
+    //         for (const count of partitions.values()) {
+    //             const probability = count / totalCount;
+    //             entropy -= probability * Math.log2(probability);
+    //         }
 
-        console.log(eliminatedNodes);
+    //         totalEntropy += entropy;
+    //     }
 
-        const maxEliminatedNodes = Math.max(
-            ...remaining.map((champ) => {
-                const filteredGraph = filterGraph(graph, champ);
-                return remaining.length - filteredGraph.nodes.length;
-            })
-        );
+    //     return totalEntropy;
+    // };
 
-        return maxEliminatedNodes > 0
-            ? eliminatedNodes / maxEliminatedNodes
-            : 0;
-    };
+    // const calculateScore = (
+    //     guess: Champion,
+    //     remaining: Champion[],
+    //     knownAttributes: Partial<Champion>
+    // ): number => {
+    //     let score = 0;
 
-    const calculateEntropy = (
-        remaining: Champion[],
-        possibleGuesses: Champion[]
-    ): number => {
-        let totalEntropy = 0;
-        const totalCount = remaining.length;
+    //     if (knownAttributes.set) {
+    //         score -=
+    //             guess.set === knownAttributes.set ? 0 : attributeWeights.set;
+    //     }
+    //     if (knownAttributes.cost) {
+    //         score -=
+    //             guess.cost === knownAttributes.cost ? 0 : attributeWeights.cost;
+    //     }
+    //     if (knownAttributes.gender) {
+    //         score -=
+    //             guess.gender === knownAttributes.gender
+    //                 ? 0
+    //                 : attributeWeights.gender;
+    //     }
+    //     if (knownAttributes.range) {
+    //         score -=
+    //             guess.range === knownAttributes.range
+    //                 ? 0
+    //                 : attributeWeights.range;
+    //     }
 
-        for (const guess of possibleGuesses) {
-            let partitions = new Map<string, number>();
+    //     if (knownAttributes.traits) {
+    //         const matchedTraits = guess.traits.filter((trait) =>
+    //             knownAttributes.traits!.includes(trait)
+    //         ).length;
+    //         score -=
+    //             Math.abs(knownAttributes.traits!.length - matchedTraits) * 1; // Penalize mismatched traits
+    //     }
 
-            for (const target of remaining) {
-                let key =
-                    `${target.set === guess.set ? 1 : 0}` +
-                    `${target.cost === guess.cost ? 1 : 0}` +
-                    `${target.gender === guess.gender ? 1 : 0}` +
-                    `${target.range === guess.range ? 1 : 0}` +
-                    `${
-                        target.traits.filter((trait) =>
-                            guess.traits.includes(trait)
-                        ).length
-                    }`;
+    //     const initialEntropy = calculateEntropy(remaining, remaining);
+    //     const newEntropy = calculateEntropy(
+    //         remaining.filter((champ) => champ.id !== guess.id),
+    //         remaining
+    //     );
 
-                partitions.set(key, (partitions.get(key) || 0) + 1);
-            }
+    //     score += initialEntropy - newEntropy;
 
-            let entropy = 0;
-            for (const count of partitions.values()) {
-                const probability = count / totalCount;
-                entropy -= probability * Math.log2(probability);
-            }
+    //     return score;
+    // };
 
-            totalEntropy += entropy;
-        }
+    // const bestGuessBasedOnKnownInfoAndEntropy = (
+    //     remaining: Champion[],
+    //     knownAttributes: Partial<Champion>
+    // ): Champion => {
+    //     let bestGuess: Champion | null = null;
+    //     let bestScore = -Infinity;
 
-        return totalEntropy;
-    };
+    //     for (const guess of remaining) {
+    //         const score = calculateScore(guess, remaining, knownAttributes);
+    //         if (score > bestScore) {
+    //             bestScore = score;
+    //             bestGuess = guess;
+    //         }
+    //     }
 
-    const calculateScore = (
-        guess: Champion,
-        remaining: Champion[],
-        knownAttributes: Partial<Champion>
-    ): number => {
-        let score = 0;
-
-        if (knownAttributes.set) {
-            score -=
-                guess.set === knownAttributes.set ? 0 : attributeWeights.set;
-        }
-        if (knownAttributes.cost) {
-            score -=
-                guess.cost === knownAttributes.cost ? 0 : attributeWeights.cost;
-        }
-        if (knownAttributes.gender) {
-            score -=
-                guess.gender === knownAttributes.gender
-                    ? 0
-                    : attributeWeights.gender;
-        }
-        if (knownAttributes.range) {
-            score -=
-                guess.range === knownAttributes.range
-                    ? 0
-                    : attributeWeights.range;
-        }
-
-        if (knownAttributes.traits) {
-            const matchedTraits = guess.traits.filter((trait) =>
-                knownAttributes.traits!.includes(trait)
-            ).length;
-            score -=
-                Math.abs(knownAttributes.traits!.length - matchedTraits) * 1; // Penalize mismatched traits
-        }
-
-        const initialEntropy = calculateEntropy(remaining, remaining);
-        const newEntropy = calculateEntropy(
-            remaining.filter((champ) => champ.id !== guess.id),
-            remaining
-        );
-
-        score += initialEntropy - newEntropy;
-
-        return score;
-    };
-
-    const bestGuessBasedOnKnownInfoAndEntropy = (
-        remaining: Champion[],
-        knownAttributes: Partial<Champion>
-    ): Champion => {
-        let bestGuess: Champion | null = null;
-        let bestScore = -Infinity;
-
-        for (const guess of remaining) {
-            const score = calculateScore(guess, remaining, knownAttributes);
-            if (score > bestScore) {
-                bestScore = score;
-                bestGuess = guess;
-            }
-        }
-
-        return bestGuess!;
-    };
+    //     return bestGuess!;
+    // };
 
     const getStats = () => {
         const stats = localStorage.getItem("tftdlestats");
@@ -345,38 +277,103 @@ export default function Home() {
               };
     };
 
-    // Update stats after a game
-    const updateStats = (guesses: number) => {
-        let stats = getStats();
+    useEffect(() => {
+        const updateStats = (guesses: number) => {
+            const stats = getStats();
+            if (finished) {
+                if (guesses === 1) {
+                    stats.oneShots += 1;
+                }
+                const today = new Date();
+                const yesterday = new Date();
+                yesterday.setDate(today.getDate() - 1);
+                const lastPlayed = stats.lastPlayed
+                    ? new Date(stats.lastPlayed)
+                    : null;
+                if (lastPlayed?.toDateString() === yesterday.toDateString()) {
+                    stats.currentStreak++;
+                } else {
+                    stats.currentStreak = 1;
+                }
+                stats.lastPlayed = today;
+                stats.gamesPlayed++;
+                stats.totalGuesses += guesses;
+                stats.maxStreak = Math.max(
+                    stats.maxStreak,
+                    stats.currentStreak
+                );
+
+                if (!stats.guessDistribution[guesses]) {
+                    stats.guessDistribution[guesses] = 0;
+                }
+                stats.guessDistribution[guesses] += 1;
+
+                localStorage.setItem("tftdlestats", JSON.stringify(stats));
+            }
+            return stats;
+        };
+
         if (finished) {
-            if (guesses === 1) {
-                stats.oneShots += 1;
-            }
-            const today = new Date();
-            const yesterday = new Date();
-            yesterday.setDate(today.getDate() - 1);
-            const lastPlayed = stats.lastPlayed
-                ? new Date(stats.lastPlayed)
-                : null;
-            if (lastPlayed?.toDateString() === yesterday.toDateString()) {
-                stats.currentStreak++;
-            } else {
-                stats.currentStreak = 1;
-            }
-            stats.lastPlayed = today;
-            stats.gamesPlayed++;
-            stats.totalGuesses += guesses;
-            stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
-
-            if (!stats.guessDistribution[guesses]) {
-                stats.guessDistribution[guesses] = 0;
-            }
-            stats.guessDistribution[guesses] += 1;
-
-            localStorage.setItem("tftdlestats", JSON.stringify(stats));
+            const stats = updateStats(guesses.length);
+            setStats(stats);
         }
-        return stats;
-    };
+    }, [finished, guesses.length]);
+
+    useEffect(() => {
+        if (champs) {
+            setAnswer(champs[Math.floor(Math.random() * champs.length)]);
+            setFilteredChamps(champs);
+            // setGraph(createGraph(champs));
+        }
+    }, [champs]);
+
+    useEffect(() => {
+        if (champs) {
+            // const filteredGraph = createGraph(
+            //     champs.filter((champ) => {
+            //         const g = filterGraph(graph, champs[guesses[0]]);
+            //         return g.nodes.includes(champ);
+            //     })
+            // );
+            // console.log(filteredGraph);
+            // setGraph(filteredGraph);
+            // const remainingChamps = champs.filter((champ) =>
+            //     filteredGraph.nodes.includes(champ)
+            // );
+            // console.log(
+            //     calculateNormalizedScore(
+            //         champs[guesses[0]],
+            //         remainingChamps,
+            //         graph
+            //     )
+            // );
+            // const possibleGuesses = champs.filter(
+            //     (_, index) => !guesses.includes(index)
+            // );
+            // const entropy = calculateEntropy(remainingChamps, possibleGuesses);
+            // console.log("Entropy:", entropy);
+            // const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
+            //     remainingChamps,
+            //     {
+            //         set: champs[guesses[guesses.length - 1]].set,
+            //         cost: champs[guesses[guesses.length - 1]].cost,
+            //         gender: champs[guesses[guesses.length - 1]].gender,
+            //         range: champs[guesses[guesses.length - 1]].range,
+            //         traits: champs[guesses[guesses.length - 1]].traits,
+            //     }
+            // );
+            // console.log(
+            //     calculateScore(champs[guesses[0]], remainingChamps, {
+            //         set: champs[guesses[guesses.length - 1]].set,
+            //         cost: champs[guesses[guesses.length - 1]].cost,
+            //         gender: champs[guesses[guesses.length - 1]].gender,
+            //         range: champs[guesses[guesses.length - 1]].range,
+            //         traits: champs[guesses[guesses.length - 1]].traits,
+            //     })
+            // );
+            // console.log("Best Guess:", bestGuess);
+        }
+    }, [guesses, champs]);
 
     return (
         <>
