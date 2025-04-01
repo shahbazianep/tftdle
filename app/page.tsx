@@ -6,18 +6,18 @@ import { useEffect, useState } from "react";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-import { Champion, Stats } from "@/assets/types/types";
+import { Champion, Graph, Stats } from "@/assets/types/types";
 import Tile from "@/components/Tile";
 import Head from "next/head";
 import { IoIosStats } from "react-icons/io";
 import { IoClose } from "react-icons/io5";
 
-// const attributeWeights: { [key: string]: number } = {
-//     set: 5, // Example: Set is relatively important
-//     cost: 4, // Cost is somewhat important
-//     gender: 3, // Gender is less differentiating
-//     range: 1, // Range is moderately important
-// };
+const attributeWeights: { [key: string]: number } = {
+    set: 5, // Example: Set is relatively important
+    cost: 4, // Cost is somewhat important
+    gender: 3, // Gender is less differentiating
+    range: 1, // Range is moderately important
+};
 
 export default function Home() {
     const [champs, setChamps] = useState<Champion[]>();
@@ -31,8 +31,8 @@ export default function Home() {
     const [showStats, setShowStats] = useState<boolean>(false);
     const [showIndicators, setShowIndicators] = useState<boolean>(true);
     const [stats, setStats] = useState<Stats>();
-    // const [graph, setGraph] = useState<Graph>();
-    // const [scores, setScores] = useState<number[]>();
+    const [graph, setGraph] = useState<Graph>();
+    const [scores, setScores] = useState<number[]>();
 
     function getTimeUntilMidnight() {
         const now = new Date();
@@ -65,72 +65,83 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
-    // const filterGraph = (graph: Graph, guess: Champion) => {
-    //     const correctSet = guess.set === answer?.set;
-    //     const correctCost = guess.cost === answer?.cost;
-    //     const correctGender = guess.gender === answer?.gender;
-    //     const correctRange = guess.range === answer?.range;
-    //     const correctTraits =
-    //         guess.traits === answer?.traits
-    //             ? 2
-    //             : guess.traits.some((trait) => answer?.traits.includes(trait))
-    //             ? 1
-    //             : 0;
+    const filterGraph = (graph: Graph, guess: Champion, answer: Champion) => {
+        const correctSet = guess.set === answer?.set;
+        const correctCost = guess.cost === answer?.cost;
+        const correctGender = guess.gender === answer?.gender;
+        const correctRange = guess.range === answer?.range;
+        const correctTraits =
+            guess.traits === answer?.traits
+                ? 2
+                : guess.traits.some((trait) => answer?.traits.includes(trait))
+                ? 1
+                : 0;
 
-    //     graph.edges.forEach((value, key, map) => {
-    //         const champion = graph.nodes.find((champ) => champ.id === key);
-    //         if (!champion) return;
+        // Create a deep copy of the graph
+        const newGraph: Graph = {
+            nodes: [...graph.nodes],
+            edges: new Map(
+                Array.from(graph.edges.entries()).map(([key, value]) => [
+                    key,
+                    new Set(value),
+                ])
+            ),
+        };
 
-    //         const isValid =
-    //             correctSet === (champion.set === guess.set) &&
-    //             correctCost === (champion.cost === guess.cost) &&
-    //             correctGender === (champion.gender === guess.gender) &&
-    //             correctRange === (champion.range === guess.range) &&
-    //             (correctTraits === 1
-    //                 ? champion.traits.some((trait) =>
-    //                       guess.traits.includes(trait)
-    //                   )
-    //                 : correctTraits === 2
-    //                 ? champion.traits.every((trait) =>
-    //                       guess.traits.includes(trait)
-    //                   )
-    //                 : !champion.traits.some((trait) =>
-    //                       guess.traits.includes(trait)
-    //                   ));
+        newGraph.edges.forEach((value, key, map) => {
+            const champion = newGraph.nodes.find((champ) => champ.id === key);
+            if (!champion) return;
 
-    //         if (!isValid) map.delete(key);
-    //     });
+            const isValid =
+                correctSet === (champion.set === guess.set) &&
+                correctCost === (champion.cost === guess.cost) &&
+                correctGender === (champion.gender === guess.gender) &&
+                correctRange === (champion.range === guess.range) &&
+                (correctTraits === 1
+                    ? champion.traits.some((trait) =>
+                          guess.traits.includes(trait)
+                      )
+                    : correctTraits === 2
+                    ? champion.traits.every((trait) =>
+                          guess.traits.includes(trait)
+                      )
+                    : !champion.traits.some((trait) =>
+                          guess.traits.includes(trait)
+                      ));
 
-    //     graph.nodes = graph.nodes.filter(
-    //         (champion) => (graph.edges.get(champion.id)?.size ?? 0) > 0
-    //     );
+            if (!isValid) map.delete(key);
+        });
 
-    //     return graph;
-    // };
+        newGraph.nodes = newGraph.nodes.filter(
+            (champion) => (newGraph.edges.get(champion.id)?.size ?? 0) > 0
+        );
 
-    // const createGraph = (data: Champion[]) => {
-    //     const graph: Graph = { nodes: data, edges: new Map() };
-    //     data.forEach((champ) => graph.edges.set(champ.id, new Set()));
+        return newGraph;
+    };
 
-    //     for (let i = 0; i < data.length; i++) {
-    //         for (let j = i + 1; j < data.length; j++) {
-    //             const A = data[i];
-    //             const B = data[j];
+    const createGraph = (data: Champion[]) => {
+        const graph: Graph = { nodes: data, edges: new Map() };
+        data.forEach((champ) => graph.edges.set(champ.id, new Set()));
 
-    //             if (
-    //                 A.set === B.set ||
-    //                 A.cost === B.cost ||
-    //                 A.gender === B.gender ||
-    //                 A.range === B.range ||
-    //                 A.traits.some((trait) => B.traits.includes(trait))
-    //             ) {
-    //                 graph.edges.get(A.id)?.add(B.id);
-    //                 graph.edges.get(B.id)?.add(A.id);
-    //             }
-    //         }
-    //     }
-    //     return graph;
-    // };
+        for (let i = 0; i < data.length; i++) {
+            for (let j = i + 1; j < data.length; j++) {
+                const A = data[i];
+                const B = data[j];
+
+                if (
+                    A.set === B.set ||
+                    A.cost === B.cost ||
+                    A.gender === B.gender ||
+                    A.range === B.range ||
+                    A.traits.some((trait) => B.traits.includes(trait))
+                ) {
+                    graph.edges.get(A.id)?.add(B.id);
+                    graph.edges.get(B.id)?.add(A.id);
+                }
+            }
+        }
+        return graph;
+    };
 
     // const calculateNormalizedScore = (
     //     guess: Champion,
@@ -138,7 +149,7 @@ export default function Home() {
     //     graph: Graph
     // ): number => {
     //     const eliminatedNodes = remaining.filter((champ) => {
-    //         const filteredGraph = filterGraph(graph, guess);
+    //         const filteredGraph = filterGraph(graph, gues);
     //         return !filteredGraph.nodes.includes(champ);
     //     }).length;
 
@@ -156,107 +167,101 @@ export default function Home() {
     //         : 0;
     // };
 
-    // const calculateEntropy = (
-    //     remaining: Champion[],
-    //     possibleGuesses: Champion[]
-    // ): number => {
-    //     let totalEntropy = 0;
-    //     const totalCount = remaining.length;
+    const calculateEntropy = (
+        remaining: Champion[],
+        possibleGuesses: Champion[]
+    ): number => {
+        let totalEntropy = 0;
+        const totalCount = remaining.length;
 
-    //     for (const guess of possibleGuesses) {
-    //         const partitions = new Map<string, number>();
+        for (const guess of possibleGuesses) {
+            const partitions = new Map<string, number>();
 
-    //         for (const target of remaining) {
-    //             const key =
-    //                 `${target.set === guess.set ? 1 : 0}` +
-    //                 `${target.cost === guess.cost ? 1 : 0}` +
-    //                 `${target.gender === guess.gender ? 1 : 0}` +
-    //                 `${target.range === guess.range ? 1 : 0}` +
-    //                 `${
-    //                     target.traits.filter((trait) =>
-    //                         guess.traits.includes(trait)
-    //                     ).length
-    //                 }`;
+            for (const target of remaining) {
+                const key =
+                    `${target.set === guess.set ? 1 : 0}` +
+                    `${target.cost === guess.cost ? 1 : 0}` +
+                    `${target.gender === guess.gender ? 1 : 0}` +
+                    `${target.range === guess.range ? 1 : 0}` +
+                    `${
+                        target.traits.filter((trait) =>
+                            guess.traits.includes(trait)
+                        ).length
+                    }`;
 
-    //             partitions.set(key, (partitions.get(key) || 0) + 1);
-    //         }
+                partitions.set(key, (partitions.get(key) || 0) + 1);
+            }
 
-    //         let entropy = 0;
-    //         for (const count of partitions.values()) {
-    //             const probability = count / totalCount;
-    //             entropy -= probability * Math.log2(probability);
-    //         }
+            let entropy = 0;
+            for (const count of partitions.values()) {
+                const probability = count / totalCount;
+                entropy -= probability * Math.log2(probability);
+            }
 
-    //         totalEntropy += entropy;
-    //     }
+            totalEntropy += entropy;
+        }
 
-    //     return totalEntropy;
-    // };
+        return totalEntropy;
+    };
 
-    // const calculateScore = (
-    //     guess: Champion,
-    //     remaining: Champion[],
-    //     knownAttributes: Partial<Champion>
-    // ): number => {
-    //     let score = 0;
+    const bestGuessBasedOnKnownInfoAndEntropy = (
+        remaining: Champion[],
+        knownAttributes: Partial<Champion>
+    ): Champion => {
+        let bestGuess: Champion | null = null;
+        let bestScore = -Infinity;
 
-    //     if (knownAttributes.set) {
-    //         score -=
-    //             guess.set === knownAttributes.set ? 0 : attributeWeights.set;
-    //     }
-    //     if (knownAttributes.cost) {
-    //         score -=
-    //             guess.cost === knownAttributes.cost ? 0 : attributeWeights.cost;
-    //     }
-    //     if (knownAttributes.gender) {
-    //         score -=
-    //             guess.gender === knownAttributes.gender
-    //                 ? 0
-    //                 : attributeWeights.gender;
-    //     }
-    //     if (knownAttributes.range) {
-    //         score -=
-    //             guess.range === knownAttributes.range
-    //                 ? 0
-    //                 : attributeWeights.range;
-    //     }
+        const initialEntropy = calculateEntropy(remaining, remaining);
 
-    //     if (knownAttributes.traits) {
-    //         const matchedTraits = guess.traits.filter((trait) =>
-    //             knownAttributes.traits!.includes(trait)
-    //         ).length;
-    //         score -=
-    //             Math.abs(knownAttributes.traits!.length - matchedTraits) * 1; // Penalize mismatched traits
-    //     }
+        for (const guess of remaining) {
+            const filteredRemaining = remaining.filter(
+                (champ) => champ.id !== guess.id
+            );
+            const newEntropy = calculateEntropy(filteredRemaining, remaining);
 
-    //     const initialEntropy = calculateEntropy(remaining, remaining);
-    //     const newEntropy = calculateEntropy(
-    //         remaining.filter((champ) => champ.id !== guess.id),
-    //         remaining
-    //     );
+            let score = initialEntropy - newEntropy;
 
-    //     score += initialEntropy - newEntropy;
+            if (knownAttributes.set) {
+                score -=
+                    guess.set === knownAttributes.set
+                        ? 0
+                        : attributeWeights.set;
+            }
+            if (knownAttributes.cost) {
+                score -=
+                    guess.cost === knownAttributes.cost
+                        ? 0
+                        : attributeWeights.cost;
+            }
+            if (knownAttributes.gender) {
+                score -=
+                    guess.gender === knownAttributes.gender
+                        ? 0
+                        : attributeWeights.gender;
+            }
+            if (knownAttributes.range) {
+                score -=
+                    guess.range === knownAttributes.range
+                        ? 0
+                        : attributeWeights.range;
+            }
+            if (knownAttributes.traits) {
+                const matchedTraits = guess.traits.filter((trait) =>
+                    knownAttributes.traits!.includes(trait)
+                ).length;
+                score -= Math.abs(
+                    knownAttributes.traits!.length - matchedTraits
+                );
+            }
 
-    //     return score;
-    // };
+            if (score > bestScore) {
+                bestScore = score;
+                bestGuess = guess;
+            }
+        }
 
-    // const bestGuessBasedOnKnownInfoAndEntropy = (
-    //     remaining: Champion[],
-    //     knownAttributes: Partial<Champion>
-    // ): Champion => {
-    //     let bestGuess: Champion | null = null;
-    //     let bestScore = -Infinity;
-
-    //     for (const guess of remaining) {
-    //         const score = calculateScore(guess, remaining, knownAttributes);
-    //         if (score > bestScore) {
-    //             bestScore = score;
-    //             bestGuess = guess;
-    //         }
-    //     }
-
-    //     return bestGuess!;
-    // };
+        return bestGuess!;
+    };
 
     const getStats = () => {
         const stats = localStorage.getItem("tftdlestats");
@@ -323,55 +328,59 @@ export default function Home() {
         if (champs) {
             setAnswer(champs[Math.floor(Math.random() * champs.length)]);
             setFilteredChamps(champs);
-            // setGraph(createGraph(champs));
+            setGraph(createGraph(champs));
+            console.log(createGraph(champs));
         }
     }, [champs]);
 
     useEffect(() => {
-        if (champs) {
-            // const filteredGraph = createGraph(
-            //     champs.filter((champ) => {
-            //         const g = filterGraph(graph, champs[guesses[0]]);
-            //         return g.nodes.includes(champ);
-            //     })
-            // );
-            // console.log(filteredGraph);
-            // setGraph(filteredGraph);
-            // const remainingChamps = champs.filter((champ) =>
-            //     filteredGraph.nodes.includes(champ)
-            // );
-            // console.log(
-            //     calculateNormalizedScore(
-            //         champs[guesses[0]],
-            //         remainingChamps,
-            //         graph
-            //     )
-            // );
-            // const possibleGuesses = champs.filter(
-            //     (_, index) => !guesses.includes(index)
-            // );
-            // const entropy = calculateEntropy(remainingChamps, possibleGuesses);
-            // console.log("Entropy:", entropy);
-            // const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
-            //     remainingChamps,
-            //     {
-            //         set: champs[guesses[guesses.length - 1]].set,
-            //         cost: champs[guesses[guesses.length - 1]].cost,
-            //         gender: champs[guesses[guesses.length - 1]].gender,
-            //         range: champs[guesses[guesses.length - 1]].range,
-            //         traits: champs[guesses[guesses.length - 1]].traits,
-            //     }
-            // );
-            // console.log(
-            //     calculateScore(champs[guesses[0]], remainingChamps, {
-            //         set: champs[guesses[guesses.length - 1]].set,
-            //         cost: champs[guesses[guesses.length - 1]].cost,
-            //         gender: champs[guesses[guesses.length - 1]].gender,
-            //         range: champs[guesses[guesses.length - 1]].range,
-            //         traits: champs[guesses[guesses.length - 1]].traits,
-            //     })
-            // );
-            // console.log("Best Guess:", bestGuess);
+        if (champs && graph) {
+            let results = [];
+            for (let i = 8; i < 20; i++) {
+                console.log(i);
+                let simGuess = [...guesses];
+                let answer = champs[i];
+                let filteredGraph = createGraph(champs);
+                while (true) {
+                    const currentGuess = champs[simGuess[0]];
+                    if (simGuess.length > 10)
+                        console.log(answer, filteredGraph, currentGuess);
+                    if (currentGuess.id === answer!.id) break;
+                    filteredGraph = filterGraph(
+                        filteredGraph,
+                        currentGuess,
+                        answer
+                    );
+                    // console.log(filteredGraph);
+                    // setGraph(filteredGraph);
+                    const remainingChamps = champs.filter((champ) =>
+                        filteredGraph.nodes.includes(champ)
+                    );
+                    // console.log(remainingChamps);
+                    const possibleGuesses = champs.filter(
+                        (_, index) => !guesses.includes(index)
+                    );
+                    const entropy = calculateEntropy(
+                        remainingChamps,
+                        possibleGuesses
+                    );
+                    // console.log("Entropy:", entropy);
+                    const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
+                        remainingChamps,
+                        {
+                            set: currentGuess.set,
+                            cost: currentGuess.cost,
+                            gender: currentGuess.gender,
+                            range: currentGuess.range,
+                            traits: currentGuess.traits,
+                        }
+                    );
+                    // console.log("Best Guess:", bestGuess);
+                    simGuess = [champs.indexOf(bestGuess), ...simGuess];
+                }
+                results.push(simGuess.length);
+            }
+            console.log(results);
         }
     }, [guesses, champs]);
 
@@ -416,7 +425,8 @@ export default function Home() {
                     </div>
                     {!finished && (
                         <div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
-                            Guess today&apos;s TFT champion!
+                            {answer.name} {answer.set} Guess today&apos;s TFT
+                            champion!
                         </div>
                     )}
                     {!finished && (
@@ -444,7 +454,9 @@ export default function Home() {
                                                     champ.name
                                                         .replace("'", "")
                                                         .toLowerCase()
-                                                        .startsWith(newQuery) &&
+                                                        .startsWith(
+                                                            newQuery.toLowerCase()
+                                                        ) &&
                                                     !guesses.includes(
                                                         champs.indexOf(champ)
                                                     )
