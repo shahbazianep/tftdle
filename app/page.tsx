@@ -307,7 +307,7 @@ export default function Home() {
     useEffect(() => {
         const updateStats = (guesses: number) => {
             const stats = getStats();
-            if (finished && stats.lastPlayed) {
+            if (finished) {
                 const today = new Date();
                 const lastPlayed = new Date(stats.lastPlayed);
 
