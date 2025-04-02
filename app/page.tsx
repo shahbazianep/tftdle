@@ -362,7 +362,9 @@ export default function Home() {
 
     useEffect(() => {
         if (champs) {
-            const dateSeed = new Date().toISOString().slice(0, 10);
+            const dateSeed = new Date()
+                .toLocaleString("en-CA", { timeZone: "America/Los_Angeles" })
+                .slice(0, 10);
             let hash = 0;
             for (let i = 0; i < dateSeed.length; i++) {
                 hash = (hash * 31 + dateSeed.charCodeAt(i)) % 1237;
@@ -691,7 +693,7 @@ export default function Home() {
                                 height={319}
                                 style={{ position: "absolute", zIndex: -1 }}
                             />
-                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2">
+                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2 font-[Beatrice-Medium]">
                                 <span className="text-5xl font-[Beatrice-Extrabold] mt-6">
                                     VICTORY
                                 </span>
