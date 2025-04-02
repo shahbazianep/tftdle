@@ -6,18 +6,17 @@ import { useEffect, useState } from "react";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-import { Champion, Graph, Stats } from "@/assets/types/types";
+import { Champion, Stats } from "@/assets/types/types";
 import Tile from "@/components/Tile";
+import Switch from "@/components/Switch";
 import Head from "next/head";
-import { IoIosStats } from "react-icons/io";
-import { IoClose } from "react-icons/io5";
-
-const attributeWeights: { [key: string]: number } = {
-    set: 5, // Example: Set is relatively important
-    cost: 4, // Cost is somewhat important
-    gender: 3, // Gender is less differentiating
-    range: 1, // Range is moderately important
-};
+import {
+    IoIosInformationCircle,
+    IoIosStats,
+    IoMdArrowForward,
+} from "react-icons/io";
+import { IoClose, IoStatsChart } from "react-icons/io5";
+import { guessResults } from "@/assets/data";
 
 export default function Home() {
     const [champs, setChamps] = useState<Champion[]>();
@@ -31,8 +30,19 @@ export default function Home() {
     const [showStats, setShowStats] = useState<boolean>(false);
     const [showIndicators, setShowIndicators] = useState<boolean>(true);
     const [stats, setStats] = useState<Stats>();
-    const [graph, setGraph] = useState<Graph>();
-    const [scores, setScores] = useState<number[]>();
+    const [simulatedGuesses, setSimulatedGuesses] = useState<number>(-1);
+    const [flawless, setFlawless] = useState<boolean>(true);
+    const [correctCategories, setCorrectCategories] = useState<boolean[]>([
+        false,
+        false,
+        false,
+        false,
+        false,
+    ]);
+    // const [hintsUsed, setHintsUsed] = useState<number>(0);
+    const [hintsEnabled, setHintsEnabled] = useState<boolean>(false);
+    const [showAnalysisExplanation, setShowAnalysisExplanation] =
+        useState<boolean>(false);
 
     function getTimeUntilMidnight() {
         const now = new Date();
@@ -60,88 +70,93 @@ export default function Home() {
         const timer = setInterval(() => {
             setTimeLeft(getTimeUntilMidnight());
         }, 1000);
-        setStats(getStats);
+        setStats(getStats());
+        console.log(getStats());
 
         return () => clearInterval(timer);
     }, []);
 
-    const filterGraph = (graph: Graph, guess: Champion, answer: Champion) => {
-        const correctSet = guess.set === answer?.set;
-        const correctCost = guess.cost === answer?.cost;
-        const correctGender = guess.gender === answer?.gender;
-        const correctRange = guess.range === answer?.range;
-        const correctTraits =
-            guess.traits === answer?.traits
-                ? 2
-                : guess.traits.some((trait) => answer?.traits.includes(trait))
-                ? 1
-                : 0;
+    // const filterGraph = (graph: Graph, guess: Champion, answer: Champion) => {
+    //     const correctSet = guess.set === answer?.set;
+    //     const correctCost = guess.cost === answer?.cost;
+    //     const correctGender = guess.gender === answer?.gender;
+    //     const correctRange = guess.range === answer?.range;
+    //     const correctTraits =
+    //         guess.traits === answer?.traits
+    //             ? 2
+    //             : guess.traits.some((trait) => answer?.traits.includes(trait))
+    //             ? 1
+    //             : 0;
 
-        // Create a deep copy of the graph
-        const newGraph: Graph = {
-            nodes: [...graph.nodes],
-            edges: new Map(
-                Array.from(graph.edges.entries()).map(([key, value]) => [
-                    key,
-                    new Set(value),
-                ])
-            ),
-        };
+    //     // Create a deep copy of the graph
+    //     const newGraph: Graph = {
+    //         nodes: [...graph.nodes],
+    //         edges: new Map(
+    //             Array.from(graph.edges.entries()).map(([key, value]) => [
+    //                 key,
+    //                 new Set(value),
+    //             ])
+    //         ),
+    //     };
 
-        newGraph.edges.forEach((value, key, map) => {
-            const champion = newGraph.nodes.find((champ) => champ.id === key);
-            if (!champion) return;
+    //     newGraph.edges.forEach((value, key, map) => {
+    //         const champion = newGraph.nodes.find((champ) => champ.id === key);
+    //         if (!champion) return;
 
-            const isValid =
-                correctSet === (champion.set === guess.set) &&
-                correctCost === (champion.cost === guess.cost) &&
-                correctGender === (champion.gender === guess.gender) &&
-                correctRange === (champion.range === guess.range) &&
-                (correctTraits === 1
-                    ? champion.traits.some((trait) =>
-                          guess.traits.includes(trait)
-                      )
-                    : correctTraits === 2
-                    ? champion.traits.every((trait) =>
-                          guess.traits.includes(trait)
-                      )
-                    : !champion.traits.some((trait) =>
-                          guess.traits.includes(trait)
-                      ));
+    //         const isValid =
+    //             correctSet === (champion.set === guess.set) &&
+    //             correctCost === (champion.cost === guess.cost) &&
+    //             correctGender === (champion.gender === guess.gender) &&
+    //             correctRange === (champion.range === guess.range) &&
+    //             (correctTraits === 1
+    //                 ? champion.traits.some((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   )
+    //                 : correctTraits === 2
+    //                 ? champion.traits.every((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   )
+    //                 : !champion.traits.some((trait) =>
+    //                       guess.traits.includes(trait)
+    //                   ));
 
-            if (!isValid) map.delete(key);
-        });
+    //         if (!isValid) map.delete(key);
+    //     });
 
-        newGraph.nodes = newGraph.nodes.filter(
-            (champion) => (newGraph.edges.get(champion.id)?.size ?? 0) > 0
-        );
+    //     // Remove the current guess from the graph
+    //     newGraph.nodes = newGraph.nodes.filter(
+    //         (champion) =>
+    //             champion.id !== guess.id &&
+    //             (newGraph.edges.get(champion.id)?.size ?? 0) > 0
+    //     );
+    //     newGraph.edges.delete(guess.id);
 
-        return newGraph;
-    };
+    //     return newGraph;
+    // };
 
-    const createGraph = (data: Champion[]) => {
-        const graph: Graph = { nodes: data, edges: new Map() };
-        data.forEach((champ) => graph.edges.set(champ.id, new Set()));
+    // const createGraph = (data: Champion[]) => {
+    //     const graph: Graph = { nodes: data, edges: new Map() };
+    //     data.forEach((champ) => graph.edges.set(champ.id, new Set()));
 
-        for (let i = 0; i < data.length; i++) {
-            for (let j = i + 1; j < data.length; j++) {
-                const A = data[i];
-                const B = data[j];
+    //     for (let i = 0; i < data.length; i++) {
+    //         for (let j = i + 1; j < data.length; j++) {
+    //             const A = data[i];
+    //             const B = data[j];
 
-                if (
-                    A.set === B.set ||
-                    A.cost === B.cost ||
-                    A.gender === B.gender ||
-                    A.range === B.range ||
-                    A.traits.some((trait) => B.traits.includes(trait))
-                ) {
-                    graph.edges.get(A.id)?.add(B.id);
-                    graph.edges.get(B.id)?.add(A.id);
-                }
-            }
-        }
-        return graph;
-    };
+    //             if (
+    //                 A.set === B.set ||
+    //                 A.cost === B.cost ||
+    //                 A.gender === B.gender ||
+    //                 A.range === B.range ||
+    //                 A.traits.some((trait) => B.traits.includes(trait))
+    //             ) {
+    //                 graph.edges.get(A.id)?.add(B.id);
+    //                 graph.edges.get(B.id)?.add(A.id);
+    //             }
+    //         }
+    //     }
+    //     return graph;
+    // };
 
     // const calculateNormalizedScore = (
     //     guess: Champion,
@@ -167,101 +182,101 @@ export default function Home() {
     //         : 0;
     // };
 
-    const calculateEntropy = (
-        remaining: Champion[],
-        possibleGuesses: Champion[]
-    ): number => {
-        let totalEntropy = 0;
-        const totalCount = remaining.length;
+    // const calculateEntropy = (
+    //     remaining: Champion[],
+    //     possibleGuesses: Champion[]
+    // ): number => {
+    //     let totalEntropy = 0;
+    //     const totalCount = remaining.length;
 
-        for (const guess of possibleGuesses) {
-            const partitions = new Map<string, number>();
+    //     for (const guess of possibleGuesses) {
+    //         const partitions = new Map<string, number>();
 
-            for (const target of remaining) {
-                const key =
-                    `${target.set === guess.set ? 1 : 0}` +
-                    `${target.cost === guess.cost ? 1 : 0}` +
-                    `${target.gender === guess.gender ? 1 : 0}` +
-                    `${target.range === guess.range ? 1 : 0}` +
-                    `${
-                        target.traits.filter((trait) =>
-                            guess.traits.includes(trait)
-                        ).length
-                    }`;
+    //         for (const target of remaining) {
+    //             const key =
+    //                 `${target.set === guess.set ? 1 : 0}` +
+    //                 `${target.cost === guess.cost ? 1 : 0}` +
+    //                 `${target.gender === guess.gender ? 1 : 0}` +
+    //                 `${target.range === guess.range ? 1 : 0}` +
+    //                 `${
+    //                     target.traits.filter((trait) =>
+    //                         guess.traits.includes(trait)
+    //                     ).length
+    //                 }`;
 
-                partitions.set(key, (partitions.get(key) || 0) + 1);
-            }
+    //             partitions.set(key, (partitions.get(key) || 0) + 1);
+    //         }
 
-            let entropy = 0;
-            for (const count of partitions.values()) {
-                const probability = count / totalCount;
-                entropy -= probability * Math.log2(probability);
-            }
+    //         let entropy = 0;
+    //         for (const count of partitions.values()) {
+    //             const probability = count / totalCount;
+    //             entropy -= probability * Math.log2(probability);
+    //         }
 
-            totalEntropy += entropy;
-        }
+    //         totalEntropy += entropy;
+    //     }
 
-        return totalEntropy;
-    };
+    //     return totalEntropy;
+    // };
 
-    const bestGuessBasedOnKnownInfoAndEntropy = (
-        remaining: Champion[],
-        knownAttributes: Partial<Champion>
-    ): Champion => {
-        let bestGuess: Champion | null = null;
-        let bestScore = -Infinity;
+    // const bestGuessBasedOnKnownInfoAndEntropy = (
+    //     remaining: Champion[],
+    //     knownAttributes: Partial<Champion>
+    // ): Champion => {
+    //     let bestGuess: Champion | null = null;
+    //     let bestScore = -Infinity;
 
-        const initialEntropy = calculateEntropy(remaining, remaining);
+    //     const initialEntropy = calculateEntropy(remaining, remaining);
 
-        for (const guess of remaining) {
-            const filteredRemaining = remaining.filter(
-                (champ) => champ.id !== guess.id
-            );
-            const newEntropy = calculateEntropy(filteredRemaining, remaining);
+    //     for (const guess of remaining) {
+    //         const filteredRemaining = remaining.filter(
+    //             (champ) => champ.id !== guess.id
+    //         );
+    //         const newEntropy = calculateEntropy(filteredRemaining, remaining);
 
-            let score = initialEntropy - newEntropy;
+    //         let score = initialEntropy - newEntropy;
 
-            if (knownAttributes.set) {
-                score -=
-                    guess.set === knownAttributes.set
-                        ? 0
-                        : attributeWeights.set;
-            }
-            if (knownAttributes.cost) {
-                score -=
-                    guess.cost === knownAttributes.cost
-                        ? 0
-                        : attributeWeights.cost;
-            }
-            if (knownAttributes.gender) {
-                score -=
-                    guess.gender === knownAttributes.gender
-                        ? 0
-                        : attributeWeights.gender;
-            }
-            if (knownAttributes.range) {
-                score -=
-                    guess.range === knownAttributes.range
-                        ? 0
-                        : attributeWeights.range;
-            }
-            if (knownAttributes.traits) {
-                const matchedTraits = guess.traits.filter((trait) =>
-                    knownAttributes.traits!.includes(trait)
-                ).length;
-                score -= Math.abs(
-                    knownAttributes.traits!.length - matchedTraits
-                );
-            }
+    //         if (knownAttributes.set) {
+    //             score -=
+    //                 guess.set === knownAttributes.set
+    //                     ? 0
+    //                     : attributeWeights.set;
+    //         }
+    //         if (knownAttributes.cost) {
+    //             score -=
+    //                 guess.cost === knownAttributes.cost
+    //                     ? 0
+    //                     : attributeWeights.cost;
+    //         }
+    //         if (knownAttributes.gender) {
+    //             score -=
+    //                 guess.gender === knownAttributes.gender
+    //                     ? 0
+    //                     : attributeWeights.gender;
+    //         }
+    //         if (knownAttributes.range) {
+    //             score -=
+    //                 guess.range === knownAttributes.range
+    //                     ? 0
+    //                     : attributeWeights.range;
+    //         }
+    //         if (knownAttributes.traits) {
+    //             const matchedTraits = guess.traits.filter((trait) =>
+    //                 knownAttributes.traits!.includes(trait)
+    //             ).length;
+    //             score -= Math.abs(
+    //                 knownAttributes.traits!.length - matchedTraits
+    //             );
+    //         }
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestGuess = guess;
-            }
-        }
+    //         if (score > bestScore) {
+    //             bestScore = score;
+    //             bestGuess = guess;
+    //         }
+    //     }
 
-        return bestGuess!;
-    };
+    //     return bestGuess!;
+    // };
 
     const getStats = () => {
         const stats = localStorage.getItem("tftdlestats");
@@ -273,12 +288,15 @@ export default function Home() {
               }
             : {
                   gamesPlayed: 0,
-                  oneShots: 0,
                   currentStreak: 0,
                   maxStreak: 0,
                   totalGuesses: 0,
                   lastPlayed: null,
                   guessDistribution: {},
+                  score: 0,
+                  cumulativeScore: 0,
+                  flawless: 0,
+                  hintsUsed: 0,
               };
     };
 
@@ -286,8 +304,8 @@ export default function Home() {
         const updateStats = (guesses: number) => {
             const stats = getStats();
             if (finished) {
-                if (guesses === 1) {
-                    stats.oneShots += 1;
+                if (flawless) {
+                    stats.flawless += 1;
                 }
                 const today = new Date();
                 const yesterday = new Date();
@@ -301,6 +319,19 @@ export default function Home() {
                     stats.currentStreak = 1;
                 }
                 stats.lastPlayed = today;
+                stats.score =
+                    guesses <= simulatedGuesses
+                        ? 100
+                        : stats > simulatedGuesses * 5
+                        ? 0
+                        : 100 -
+                          100 *
+                              (1 / (1 + Math.E) ** (-0.216 * (guesses - 22.6)));
+
+                console.log(guesses, simulatedGuesses, stats.score);
+                stats.cumulativeScore =
+                    (stats.cumulativeScore * stats.gamesPlayed + stats.score) /
+                    (stats.gamesPlayed + 1);
                 stats.gamesPlayed++;
                 stats.totalGuesses += guesses;
                 stats.maxStreak = Math.max(
@@ -312,7 +343,6 @@ export default function Home() {
                     stats.guessDistribution[guesses] = 0;
                 }
                 stats.guessDistribution[guesses] += 1;
-
                 localStorage.setItem("tftdlestats", JSON.stringify(stats));
             }
             return stats;
@@ -322,67 +352,109 @@ export default function Home() {
             const stats = updateStats(guesses.length);
             setStats(stats);
         }
-    }, [finished, guesses.length]);
+    }, [finished, guesses.length, simulatedGuesses, flawless]);
 
     useEffect(() => {
         if (champs) {
-            setAnswer(champs[Math.floor(Math.random() * champs.length)]);
+            const randIndex = Math.floor(Math.random() * champs.length);
+            setAnswer(champs[randIndex]);
+            setSimulatedGuesses(guessResults[randIndex]);
             setFilteredChamps(champs);
-            setGraph(createGraph(champs));
-            console.log(createGraph(champs));
+            // setGraph(createGraph(champs));
+            // console.log(createGraph(champs));
         }
     }, [champs]);
 
     useEffect(() => {
-        if (champs && graph) {
-            let results = [];
-            for (let i = 8; i < 20; i++) {
-                console.log(i);
-                let simGuess = [...guesses];
-                let answer = champs[i];
-                let filteredGraph = createGraph(champs);
-                while (true) {
-                    const currentGuess = champs[simGuess[0]];
-                    if (simGuess.length > 10)
-                        console.log(answer, filteredGraph, currentGuess);
-                    if (currentGuess.id === answer!.id) break;
-                    filteredGraph = filterGraph(
-                        filteredGraph,
-                        currentGuess,
-                        answer
-                    );
-                    // console.log(filteredGraph);
-                    // setGraph(filteredGraph);
-                    const remainingChamps = champs.filter((champ) =>
-                        filteredGraph.nodes.includes(champ)
-                    );
-                    // console.log(remainingChamps);
-                    const possibleGuesses = champs.filter(
-                        (_, index) => !guesses.includes(index)
-                    );
-                    const entropy = calculateEntropy(
-                        remainingChamps,
-                        possibleGuesses
-                    );
-                    // console.log("Entropy:", entropy);
-                    const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
-                        remainingChamps,
-                        {
-                            set: currentGuess.set,
-                            cost: currentGuess.cost,
-                            gender: currentGuess.gender,
-                            range: currentGuess.range,
-                            traits: currentGuess.traits,
-                        }
-                    );
-                    // console.log("Best Guess:", bestGuess);
-                    simGuess = [champs.indexOf(bestGuess), ...simGuess];
-                }
-                results.push(simGuess.length);
+        if (flawless && champs && answer && guesses.length > 0) {
+            const currentGuess = champs[guesses[0]];
+            const x = correctCategories;
+            if (currentGuess.set != answer.set && x[0]) {
+                console.log(1);
+                setFlawless(false);
+            } else if (currentGuess.cost != answer.cost && x[1]) {
+                console.log(2);
+                setFlawless(false);
+            } else if (currentGuess.gender != answer.gender && x[2]) {
+                console.log(3);
+                setFlawless(false);
+            } else if (currentGuess.range != answer.range && x[3]) {
+                console.log(4);
+                setFlawless(false);
+            } else if (currentGuess.traits != answer.traits && x[4]) {
+                console.log(5);
+                setFlawless(false);
+            } else {
+                setCorrectCategories([
+                    x[0] || currentGuess.set == answer.set,
+                    x[1] || currentGuess.cost == answer.cost,
+                    x[2] || currentGuess.gender == answer.gender,
+                    x[3] || currentGuess.range == answer.range,
+                    x[4] ||
+                        currentGuess.traits.every((trait) =>
+                            answer.traits.includes(trait)
+                        ),
+                ]);
             }
-            console.log(results);
         }
-    }, [guesses, champs]);
+    }, [guesses, champs, answer, correctCategories, flawless]);
+
+    useEffect(() => {
+        console.log(correctCategories);
+    }, [correctCategories]);
+
+    // useEffect(() => {
+    //     if (champs && graph && answer) {
+    //         let results = [];
+    //         for (let i = 500; i < 1236; i++) {
+    //             console.log(i);
+    //             let simGuess = [...guesses];
+    //             let answer = champs[i];
+    //             let filteredGraph = createGraph(champs);
+    //             while (true) {
+    //                 const currentGuess = champs[simGuess[0]];
+    //                 if (simGuess.length > 15) {
+    //                     console.log(answer, filteredGraph, currentGuess);
+    //                     break;
+    //                 }
+    //                 if (currentGuess.id === answer!.id) break;
+    //                 filteredGraph = filterGraph(
+    //                     filteredGraph,
+    //                     currentGuess,
+    //                     answer
+    //                 );
+    //                 // console.log(filteredGraph);
+    //                 // setGraph(filteredGraph);
+    //                 const remainingChamps = champs.filter((champ) =>
+    //                     filteredGraph.nodes.includes(champ)
+    //                 );
+    //                 // console.log(remainingChamps);
+    //                 const possibleGuesses = champs.filter(
+    //                     (_, index) => !guesses.includes(index)
+    //                 );
+    //                 const entropy = calculateEntropy(
+    //                     remainingChamps,
+    //                     possibleGuesses
+    //                 );
+    //                 // console.log("Entropy:", entropy);
+    //                 const bestGuess = bestGuessBasedOnKnownInfoAndEntropy(
+    //                     remainingChamps,
+    //                     {
+    //                         set: currentGuess.set,
+    //                         cost: currentGuess.cost,
+    //                         gender: currentGuess.gender,
+    //                         range: currentGuess.range,
+    //                         traits: currentGuess.traits,
+    //                     }
+    //                 );
+    //                 // console.log("Best Guess:", bestGuess);
+    //                 simGuess = [champs.indexOf(bestGuess), ...simGuess];
+    //             }
+    //             results.push(simGuess.length);
+    //         }
+    //         console.log(results);
+    //     }
+    // }, [guesses, champs]);
 
     return (
         <>
@@ -425,12 +497,34 @@ export default function Home() {
                     </div>
                     {!finished && (
                         <div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
-                            {answer.name} {answer.set} Guess today&apos;s TFT
-                            champion!
+                            Guess today&apos;s TFT champion!
                         </div>
                     )}
                     {!finished && (
-                        <div className="flex flex-row w-1/2 justify-center items-center relative mb-4">
+                        <div className="flex flex-row justify-center items-center relative mb-4">
+                            <div
+                                className="rounded-full w-9 h-9 bg-[#4C6FFA] absolute z-10 right-1.5 cursor-pointer flex items-center justify-center"
+                                onClick={() => {
+                                    if (
+                                        filteredChamps.length > 0 &&
+                                        query.length > 0
+                                    ) {
+                                        setQuery("");
+                                        setGuesses([
+                                            champs.indexOf(filteredChamps[0]),
+                                            ...guesses,
+                                        ]);
+                                        setFinished(
+                                            filteredChamps[0] === answer
+                                        );
+                                        document
+                                            .getElementById("search")
+                                            ?.focus();
+                                    }
+                                }}
+                            >
+                                <IoMdArrowForward className="text-white w-6 h-6" />
+                            </div>
                             <input
                                 className={`w-96 px-5 pr-16 h-12 bg-slate-50 ${
                                     query === "" || filteredChamps.length === 0
@@ -438,6 +532,7 @@ export default function Home() {
                                         : "rounded-t-3xl"
                                 } focus:outline-none font-[Beatrice-Medium] text-[#868686]`}
                                 type="text"
+                                placeholder="Type a champion's name..."
                                 name="search"
                                 id="search"
                                 value={query}
@@ -476,7 +571,10 @@ export default function Home() {
                                     );
                                 }}
                                 onKeyDown={(e) => {
-                                    if (e.key == "Enter") {
+                                    if (
+                                        e.key == "Enter" &&
+                                        filteredChamps.length > 0
+                                    ) {
                                         setQuery("");
                                         setGuesses([
                                             champs.indexOf(filteredChamps[0]),
@@ -485,6 +583,9 @@ export default function Home() {
                                         setFinished(
                                             filteredChamps[0] === answer
                                         );
+                                        document
+                                            .getElementById("search")
+                                            ?.focus();
                                     }
                                 }}
                             />
@@ -502,7 +603,7 @@ export default function Home() {
                                             return (
                                                 <div
                                                     key={index}
-                                                    className="shrink-0 flex h-8 px-5 py-6 bg-slate-50 items-center focus:outline-none focus:bg-[#31217D]/30 hover:bg-[#31217D]/30 relative cursor-pointer"
+                                                    className="shrink-0 flex h-8 px-5 py-6 bg-slate-50 items-center focus:outline-none focus:bg-[#bdbacc] hover:bg-[#bdbacc] relative cursor-pointer z-50"
                                                     onClick={() => {
                                                         setQuery("");
                                                         setGuesses([
@@ -514,6 +615,11 @@ export default function Home() {
                                                         setFinished(
                                                             champ === answer
                                                         );
+                                                        document
+                                                            .getElementById(
+                                                                "search"
+                                                            )
+                                                            ?.focus();
                                                     }}
                                                     tabIndex={0}
                                                     onKeyDown={(e) => {
@@ -528,6 +634,11 @@ export default function Home() {
                                                             setFinished(
                                                                 champ === answer
                                                             );
+                                                            document
+                                                                .getElementById(
+                                                                    "search"
+                                                                )
+                                                                ?.focus();
                                                         }
                                                     }}
                                                 >
@@ -654,10 +765,14 @@ export default function Home() {
                                     <Tile
                                         guess={set}
                                         correctValue={answer.set}
+                                        field="set"
+                                        hintsEnabled={hintsEnabled}
                                     />
                                     <Tile
                                         guess={cost}
                                         correctValue={answer.cost}
+                                        field="cost"
+                                        hintsEnabled={hintsEnabled}
                                     />
                                     <Tile
                                         guess={
@@ -674,20 +789,26 @@ export default function Home() {
                                                 2: "Other",
                                             }[answer.gender] || "Unknown"
                                         }
+                                        field="gender"
+                                        hintsEnabled={hintsEnabled}
                                     />
                                     <Tile
                                         guess={range}
                                         correctValue={answer.range}
+                                        field="range"
+                                        hintsEnabled={hintsEnabled}
                                     />
                                     <Tile
                                         guess={traits}
                                         correctValue={answer.traits}
+                                        field="traits"
+                                        hintsEnabled={hintsEnabled}
                                     />
                                 </div>
                             );
                         })}
                     </div>
-
+                    <Switch checked={hintsEnabled} onChange={setHintsEnabled} />
                     {showIndicators && (
                         <div
                             className={`flex flex-col items-center justify-center gap-2 mt-16 mb-8 p-4 bg-[#31217D]/55 rounded-2xl text-white font-[Beatrice-Extrabold] relative ${
@@ -711,8 +832,18 @@ export default function Home() {
                                     correctValue={["Partial", ""]}
                                 />
                                 <Tile guess={"Wrong"} correctValue={""} />
-                                <Tile guess={"Higher"} correctValue={""} />
-                                <Tile guess={"Lower"} correctValue={""} />
+                                <Tile
+                                    guess={"Higher"}
+                                    correctValue={"Z"}
+                                    field="set"
+                                    hintsEnabled
+                                />
+                                <Tile
+                                    guess={"Lower"}
+                                    correctValue={""}
+                                    field="set"
+                                    hintsEnabled
+                                />
                             </div>
                         </div>
                     )}
@@ -785,7 +916,7 @@ export default function Home() {
                         </div>
                     )}
                     {showStats && (
-                        <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-ExtraBold]">
+                        <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-ExtraBold] z-50">
                             <div className="flex flex-col h-[500px] w-[800px] rounded-2xl relative bg-[#31217D] p-12">
                                 <IoClose
                                     className="absolute top-5 right-5 text-white cursor-pointer"
@@ -793,44 +924,156 @@ export default function Home() {
                                         setShowStats(false);
                                     }}
                                 />
-                                <div className="flex flex-col w-2/5">
-                                    <span className="text-5xl font-[Beatrice-Extrabold]">
-                                        STATISTICS
-                                    </span>
-                                    <div className="flex flex-row justify-between mt-8 text-lg">
-                                        <span>WON</span>
-                                        <span>{stats?.gamesPlayed}</span>
-                                    </div>
-                                    <div className="flex flex-row justify-between mt-4 text-lg">
-                                        <span>ONE SHOTS</span>
-                                        <span>{stats?.oneShots}</span>
-                                    </div>
-                                    <div className="flex flex-row justify-between mt-4 text-lg">
-                                        <span>AVG GUESSES</span>
-                                        <span>
-                                            {stats?.gamesPlayed &&
-                                            stats?.totalGuesses
-                                                ? (
-                                                      stats.totalGuesses /
-                                                      stats.gamesPlayed
-                                                  ).toFixed(2)
-                                                : "N/A"}
+                                <div className="flex flex-col w-full items-center justify-between h-full">
+                                    <div className="flex flex-row items-center justify-center w-full gap-x-4">
+                                        <IoStatsChart size={32} />
+                                        <span className="text-5xl font-[Beatrice-Extrabold]">
+                                            STATISTICS
                                         </span>
                                     </div>
-                                    <div className="flex flex-row justify-between mt-4 text-lg">
-                                        <span>CURRENT STREAK</span>
-                                        <span>{stats?.currentStreak}</span>
+                                    <div className="flex flex-row justify-between w-4/5">
+                                        <div className="flex flex-col text-4xl">
+                                            <span>{stats?.gamesPlayed}</span>
+                                            <span className="text-wrap text-[#52429D] text-lg">
+                                                WON
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col text-4xl">
+                                            <span>{stats?.flawless}</span>
+                                            <span className="text-wrap text-[#52429D] text-lg">
+                                                FLAWLESS
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col text-4xl">
+                                            <span>
+                                                {stats?.gamesPlayed &&
+                                                stats?.totalGuesses
+                                                    ? (
+                                                          stats.totalGuesses /
+                                                          stats.gamesPlayed
+                                                      ).toFixed(2)
+                                                    : "N/A"}
+                                            </span>
+                                            <span className="text-wrap text-[#52429D] text-lg">
+                                                AVG
+                                                <br />
+                                                GUESSES
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col text-4xl">
+                                            <span>{stats?.currentStreak}</span>
+                                            <span className="text-wrap text-[#52429D] text-lg">
+                                                CURRENT
+                                                <br />
+                                                STREAK
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col text-4xl">
+                                            <span>{stats?.maxStreak}</span>
+                                            <span className="text-wrap text-[#52429D] text-lg">
+                                                MAX
+                                                <br />
+                                                STREAK
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-row justify-between mt-4 text-lg">
-                                        <span>MAX STREAK</span>
-                                        <span>{stats?.maxStreak}</span>
-                                    </div>
-                                    <div className="w-full h-[2px] bg-white mt-8 mb-8"></div>
-                                    <div className="text-5xl text-[#BDD783] self-start">
-                                        90%
+                                    <div className="flex flex-row justify-center w-full gap-x-4">
+                                        <div className="flex flex-col gap-y-4 w-full">
+                                            <div className="w-full flex flex-row items-center">
+                                                <div
+                                                    className="rounded-br-full rounded-tr-full h-16 bg-[#A3C751] mr-4 flex items-center justify-end p-4 text-2xl"
+                                                    style={{
+                                                        width:
+                                                            (
+                                                                Math.max(
+                                                                    stats!
+                                                                        .score,
+                                                                    30
+                                                                ) * 4
+                                                            ).toFixed(0) + "px",
+                                                    }}
+                                                >
+                                                    {stats!.score.toFixed(0)}%
+                                                </div>
+                                                <div className="text-[#85F2A7] text-lg">
+                                                    TODAY
+                                                </div>
+                                            </div>
+                                            <div className="w-full flex flex-row items-center">
+                                                <div
+                                                    className="rounded-br-full rounded-tr-full h-16 bg-[#4C6FFA] mr-4 flex items-center justify-end p-4 text-2xl"
+                                                    style={{
+                                                        width:
+                                                            (
+                                                                Math.max(
+                                                                    stats!
+                                                                        .score,
+                                                                    30
+                                                                ) * 4
+                                                            ).toFixed(0) + "px",
+                                                    }}
+                                                >
+                                                    {stats!.cumulativeScore.toFixed(
+                                                        0
+                                                    )}
+                                                    %
+                                                </div>
+                                                <div className="text-[#85F2A7] text-lg">
+                                                    CUMULATIVE
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-2xl text-left h-full flex flex-col justify-center relative">
+                                            <span>
+                                                TFTDLE
+                                                <span className="text-[#85F2A7]">
+                                                    BOT
+                                                </span>
+                                            </span>
+                                            ANALYSIS SCORE
+                                            <span
+                                                className="text-[#868686] text-xs flex flex-row items-center gap-x-1 font-[Beatrice-MediumItalic] cursor-help"
+                                                onMouseEnter={() => {
+                                                    setShowAnalysisExplanation(
+                                                        true
+                                                    );
+                                                }}
+                                                onMouseLeave={() => {
+                                                    setShowAnalysisExplanation(
+                                                        false
+                                                    );
+                                                }}
+                                            >
+                                                <IoIosInformationCircle />
+                                                <span className="mt-[1px]">
+                                                    What&apos;s this?
+                                                </span>
+                                            </span>
+                                            {showAnalysisExplanation && (
+                                                <div className="top-full bg-white rounded-2xl w-72 h-44 absolute flex flex-col items-center text-[#2B2061] text-xs p-4">
+                                                    <span>
+                                                        TFTDLEBOT ANALYSIS SCORE
+                                                    </span>
+                                                    <span className="font-[Beatrice-Medium] mt-2">
+                                                        The TFTdleBot analysis
+                                                        score is a measure of
+                                                        your performance
+                                                        compared to the optimal
+                                                        solution found by
+                                                        TFTdleBot. Scores are
+                                                        calculated in a
+                                                        nonlinear fashion
+                                                        ranging from 100 (you
+                                                        beat the bot) to 0. The
+                                                        cumulative score
+                                                        measures your
+                                                        performance over time.
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col w-3/5"></div>
                             </div>
                         </div>
                     )}
