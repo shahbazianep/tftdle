@@ -471,7 +471,9 @@ export default function Home() {
     return (
         <div className="flex flex-grow min-h-screen flex-col">
             <Head>
-                <link rel="preload" href={"/logo.png"} as="image"></link>
+                <link rel="preload" href="/logo.png" as="image" />
+                <link rel="preload" href="/win.png" as="image" />
+                <link rel="preload" href="/background.png" as="image" />
                 <link rel="preconnect" href={supabaseUrl} />
             </Head>
             {champs && filteredChamps && answer && (
