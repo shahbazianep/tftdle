@@ -48,10 +48,13 @@ export default function Home() {
 
     function getTimeUntilMidnight() {
         const now = new Date();
-        const midnight = new Date();
-        midnight.setDate(now.getDate());
-        midnight.setHours(24, 0, 0, 0);
-        const timeUntilMidnight = midnight.getTime() - now.getTime();
+        const pacificNow = new Date(
+            now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
+        );
+        const pacificMidnight = new Date(pacificNow);
+        pacificMidnight.setHours(24, 0, 0, 0);
+        const timeUntilMidnight =
+            pacificMidnight.getTime() - pacificNow.getTime();
 
         return {
             seconds: Math.floor((timeUntilMidnight / 1000) % 60),
