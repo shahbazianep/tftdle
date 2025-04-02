@@ -370,7 +370,7 @@ export default function Home() {
                 .slice(0, 10);
             let hash = 0;
             for (let i = 0; i < dateSeed.length; i++) {
-                hash = (hash * 31 + dateSeed.charCodeAt(i)) % 1237;
+                hash = (hash * 31 + dateSeed.charCodeAt(i)) % champs.length;
             }
             setAnswer(champs[hash]);
             setSimulatedGuesses(guessResults[hash]);
@@ -471,9 +471,9 @@ export default function Home() {
     return (
         <div className="flex flex-grow min-h-screen flex-col">
             <Head>
-                <link rel="preload" href="/logo.png" as="image" />
-                <link rel="preload" href="/win.png" as="image" />
-                <link rel="preload" href="/background.png" as="image" />
+                <link rel="preload" href="/logo.webp" as="image" />
+                <link rel="preload" href="/win.webp" as="image" />
+                <link rel="preload" href="/background.webp" as="image" />
                 <link rel="preconnect" href={supabaseUrl} />
             </Head>
             {champs && filteredChamps && answer && (
@@ -484,7 +484,7 @@ export default function Home() {
                 >
                     <div className="w-screen h-screen fixed -z-50">
                         <Image
-                            src={"/background.png"}
+                            src={"/background.webp"}
                             height={4096}
                             width={5760}
                             priority
@@ -499,7 +499,7 @@ export default function Home() {
                         }`}
                     >
                         <Image
-                            src={"/logo.png"}
+                            src={"/logo.webp"}
                             height={375}
                             width={1258}
                             alt="Logo"
@@ -666,7 +666,7 @@ export default function Home() {
                                                                       champ.icon
                                                                     : champ.icon
                                                             }
-                                                            alt="Player Image"
+                                                            alt="Champion Image"
                                                             height={32}
                                                             width={32}
                                                         />
@@ -692,7 +692,7 @@ export default function Home() {
                             id="results"
                         >
                             <Image
-                                src={"/win.png"}
+                                src={"/win.webp"}
                                 alt="Kobuko"
                                 width={440}
                                 height={319}
@@ -868,8 +868,9 @@ export default function Home() {
                     {finished && !resultsClosed && (
                         <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-Medium]">
                             <Image
-                                src={"/win.png"}
+                                src={"/win.webp"}
                                 alt="Kobuko"
+                                priority
                                 width={440}
                                 height={319}
                                 style={{ position: "absolute", zIndex: -1 }}
