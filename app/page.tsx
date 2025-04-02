@@ -2,7 +2,7 @@
 import Image from "next/image";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -44,6 +44,8 @@ export default function Home() {
     const [showAnalysisExplanation, setShowAnalysisExplanation] =
         useState<boolean>(false);
 
+    const correctCategoriesRef = useRef(correctCategories);
+
     function getTimeUntilMidnight() {
         const now = new Date();
         const midnight = new Date();
@@ -71,7 +73,6 @@ export default function Home() {
             setTimeLeft(getTimeUntilMidnight());
         }, 1000);
         setStats(getStats());
-        console.log(getStats());
 
         return () => clearInterval(timer);
     }, []);
@@ -303,32 +304,37 @@ export default function Home() {
     useEffect(() => {
         const updateStats = (guesses: number) => {
             const stats = getStats();
-            if (finished) {
+            if (finished && stats.lastPlayed) {
+                const today = new Date();
+                const lastPlayed = new Date(stats.lastPlayed);
+
+                if (lastPlayed.toDateString() === today.toDateString()) {
+                    return stats;
+                }
+
                 if (flawless) {
                     stats.flawless += 1;
                 }
-                const today = new Date();
+
                 const yesterday = new Date();
                 yesterday.setDate(today.getDate() - 1);
-                const lastPlayed = stats.lastPlayed
-                    ? new Date(stats.lastPlayed)
-                    : null;
-                if (lastPlayed?.toDateString() === yesterday.toDateString()) {
+
+                if (lastPlayed.toDateString() === yesterday.toDateString()) {
                     stats.currentStreak++;
                 } else {
                     stats.currentStreak = 1;
                 }
+
                 stats.lastPlayed = today;
                 stats.score =
                     guesses <= simulatedGuesses
                         ? 100
-                        : stats > simulatedGuesses * 5
+                        : guesses > simulatedGuesses * 5
                         ? 0
                         : 100 -
                           100 *
                               (1 / (1 + Math.E) ** (-0.216 * (guesses - 22.6)));
 
-                console.log(guesses, simulatedGuesses, stats.score);
                 stats.cumulativeScore =
                     (stats.cumulativeScore * stats.gamesPlayed + stats.score) /
                     (stats.gamesPlayed + 1);
@@ -356,9 +362,13 @@ export default function Home() {
 
     useEffect(() => {
         if (champs) {
-            const randIndex = Math.floor(Math.random() * champs.length);
-            setAnswer(champs[randIndex]);
-            setSimulatedGuesses(guessResults[randIndex]);
+            const dateSeed = new Date().toISOString().slice(0, 10);
+            let hash = 0;
+            for (let i = 0; i < dateSeed.length; i++) {
+                hash = (hash * 31 + dateSeed.charCodeAt(i)) % 1237;
+            }
+            setAnswer(champs[hash]);
+            setSimulatedGuesses(guessResults[hash]);
             setFilteredChamps(champs);
             // setGraph(createGraph(champs));
             // console.log(createGraph(champs));
@@ -366,26 +376,25 @@ export default function Home() {
     }, [champs]);
 
     useEffect(() => {
+        correctCategoriesRef.current = correctCategories;
+    }, [correctCategories]);
+
+    useEffect(() => {
         if (flawless && champs && answer && guesses.length > 0) {
             const currentGuess = champs[guesses[0]];
-            const x = correctCategories;
+            const x = correctCategoriesRef.current;
             if (currentGuess.set != answer.set && x[0]) {
-                console.log(1);
                 setFlawless(false);
             } else if (currentGuess.cost != answer.cost && x[1]) {
-                console.log(2);
                 setFlawless(false);
             } else if (currentGuess.gender != answer.gender && x[2]) {
-                console.log(3);
                 setFlawless(false);
             } else if (currentGuess.range != answer.range && x[3]) {
-                console.log(4);
                 setFlawless(false);
             } else if (currentGuess.traits != answer.traits && x[4]) {
-                console.log(5);
                 setFlawless(false);
             } else {
-                setCorrectCategories([
+                const updatedCategories = [
                     x[0] || currentGuess.set == answer.set,
                     x[1] || currentGuess.cost == answer.cost,
                     x[2] || currentGuess.gender == answer.gender,
@@ -394,14 +403,12 @@ export default function Home() {
                         currentGuess.traits.every((trait) =>
                             answer.traits.includes(trait)
                         ),
-                ]);
+                ];
+                setCorrectCategories(updatedCategories);
+                correctCategoriesRef.current = updatedCategories;
             }
         }
-    }, [guesses, champs, answer, correctCategories, flawless]);
-
-    useEffect(() => {
-        console.log(correctCategories);
-    }, [correctCategories]);
+    }, [guesses, champs, answer, flawless]);
 
     // useEffect(() => {
     //     if (champs && graph && answer) {
@@ -457,7 +464,7 @@ export default function Home() {
     // }, [guesses, champs]);
 
     return (
-        <>
+        <div className="flex flex-grow min-h-screen flex-col">
             <Head>
                 <link rel="preload" href={"/logo.png"} as="image"></link>
                 <link rel="preconnect" href={supabaseUrl} />
@@ -466,7 +473,7 @@ export default function Home() {
                 <div
                     className={`flex flex-col items-center ${
                         guesses.length === 0 ? "justify-center" : ""
-                    } min-h-screen w-full text-black pb-10`}
+                    } flex-grow w-full text-black pb-10`}
                 >
                     <div className="w-screen h-screen fixed -z-50">
                         <Image
@@ -673,7 +680,10 @@ export default function Home() {
                         </div>
                     )}
                     {resultsClosed && finished && (
-                        <div className="relative text-white" id="results">
+                        <div
+                            className="relative text-white mt-12 mb-12"
+                            id="results"
+                        >
                             <Image
                                 src={"/win.png"}
                                 alt="Kobuko"
@@ -681,7 +691,7 @@ export default function Home() {
                                 height={319}
                                 style={{ position: "absolute", zIndex: -1 }}
                             />
-                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative">
+                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2">
                                 <span className="text-5xl font-[Beatrice-Extrabold] mt-6">
                                     VICTORY
                                 </span>
@@ -692,7 +702,7 @@ export default function Home() {
                                 <span className="font-[Beatrice-MediumItalic]">
                                     {"SET " + answer.set}
                                 </span>
-                                <span className="text-sm mt-4 mb-4">
+                                <span className="text-sm mt-4 mb-2">
                                     {"Number of tries: "}
                                     <span className="text-[#FFB131]">
                                         {guesses.length}
@@ -705,7 +715,7 @@ export default function Home() {
                                     <IoIosStats className="text-base" />
                                     <span className="mt-0.5">STATS</span>
                                 </button>
-                                <span className="text-sm mt-2">
+                                <span className="text-sm">
                                     Next champion in
                                 </span>
                                 <span className="font-[Beatrice-Extrabold] text-2xl">
@@ -811,7 +821,7 @@ export default function Home() {
                     <Switch checked={hintsEnabled} onChange={setHintsEnabled} />
                     {showIndicators && (
                         <div
-                            className={`flex flex-col items-center justify-center gap-2 mt-16 mb-8 p-4 bg-[#31217D]/55 rounded-2xl text-white font-[Beatrice-Extrabold] relative ${
+                            className={`flex flex-col items-center justify-center gap-2 mt-12 mb-8 p-4 bg-[#31217D]/55 rounded-2xl text-white font-[Beatrice-Extrabold] relative ${
                                 guesses.length === 0 ? "hidden" : ""
                             }`}
                         >
@@ -857,7 +867,7 @@ export default function Home() {
                                 height={319}
                                 style={{ position: "absolute", zIndex: -1 }}
                             />
-                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative">
+                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2">
                                 <IoClose
                                     className="absolute top-5 right-5 text-white cursor-pointer"
                                     onClick={() => {
@@ -874,7 +884,7 @@ export default function Home() {
                                 <span className="font-[Beatrice-MediumItalic]">
                                     {"SET " + answer.set}
                                 </span>
-                                <span className="text-sm mt-4 mb-4">
+                                <span className="text-sm mt-4 mb-2">
                                     {"Number of tries: "}
                                     <span className="text-[#FFB131]">
                                         {guesses.length}
@@ -893,7 +903,7 @@ export default function Home() {
                                     <IoIosStats className="text-base" />
                                     <span className="mt-0.5">STATS</span>
                                 </button>
-                                <span className="text-sm mt-2">
+                                <span className="text-sm">
                                     Next champion in
                                 </span>
                                 <span className="font-[Beatrice-Extrabold] text-2xl">
@@ -932,45 +942,45 @@ export default function Home() {
                                         </span>
                                     </div>
                                     <div className="flex flex-row justify-between w-4/5">
-                                        <div className="flex flex-col text-4xl">
+                                        <div className="flex flex-col text-4xl gap-y-1">
                                             <span>{stats?.gamesPlayed}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg">
+                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
                                                 WON
                                             </span>
                                         </div>
-                                        <div className="flex flex-col text-4xl">
+                                        <div className="flex flex-col text-4xl gap-y-1">
                                             <span>{stats?.flawless}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg">
+                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
                                                 FLAWLESS
                                             </span>
                                         </div>
-                                        <div className="flex flex-col text-4xl">
+                                        <div className="flex flex-col text-4xl gap-y-1">
                                             <span>
                                                 {stats?.gamesPlayed &&
                                                 stats?.totalGuesses
                                                     ? (
                                                           stats.totalGuesses /
                                                           stats.gamesPlayed
-                                                      ).toFixed(2)
+                                                      ).toFixed(1)
                                                     : "N/A"}
                                             </span>
-                                            <span className="text-wrap text-[#52429D] text-lg">
+                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
                                                 AVG
                                                 <br />
                                                 GUESSES
                                             </span>
                                         </div>
-                                        <div className="flex flex-col text-4xl">
+                                        <div className="flex flex-col text-4xl gap-y-1">
                                             <span>{stats?.currentStreak}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg">
+                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
                                                 CURRENT
                                                 <br />
                                                 STREAK
                                             </span>
                                         </div>
-                                        <div className="flex flex-col text-4xl">
+                                        <div className="flex flex-col text-4xl gap-y-1">
                                             <span>{stats?.maxStreak}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg">
+                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
                                                 MAX
                                                 <br />
                                                 STREAK
@@ -1032,7 +1042,7 @@ export default function Home() {
                                             </span>
                                             ANALYSIS SCORE
                                             <span
-                                                className="text-[#868686] text-xs flex flex-row items-center gap-x-1 font-[Beatrice-MediumItalic] cursor-help"
+                                                className="absolute bottom-1 text-[#868686] text-xs flex flex-row items-center gap-x-1 font-[Beatrice-MediumItalic] cursor-help"
                                                 onMouseEnter={() => {
                                                     setShowAnalysisExplanation(
                                                         true
@@ -1050,7 +1060,7 @@ export default function Home() {
                                                 </span>
                                             </span>
                                             {showAnalysisExplanation && (
-                                                <div className="top-full bg-white rounded-2xl w-72 h-44 absolute flex flex-col items-center text-[#2B2061] text-xs p-4">
+                                                <div className="top-full bg-white rounded-2xl w-72 absolute flex flex-col items-center text-[#2B2061] text-xs p-4">
                                                     <span>
                                                         TFTDLEBOT ANALYSIS SCORE
                                                     </span>
@@ -1079,6 +1089,15 @@ export default function Home() {
                     )}
                 </div>
             )}
-        </>
+            <div className="mt-auto flex flex-col items-center pb-4">
+                <div className="text-white font-[Beatrice-Medium] text-sm mb-2">
+                    tftdle | 2025
+                </div>
+                <div className="text-[#868686] font-[Beatrice-Medium] text-xs">
+                    tftdle was created using assets owned by Riot Games, and is
+                    not endorsed or sponsored by Riot Games or its affiliates
+                </div>
+            </div>
+        </div>
     );
 }

@@ -7,7 +7,7 @@ export default function Switch({
 }) {
     return (
         <div
-            className={`w-24 h-10 flex items-center justify-start rounded-full p-1.5 cursor-pointer transition-all duration-300 relative ${
+            className={`w-24 h-10 flex items-center justify-start rounded-full p-1.5 cursor-pointer transition-all duration-300 relative mt-2 mb-2 ${
                 !checked ? "bg-[#D78383]" : "bg-[#BDD783]"
             }`}
             onClick={() => onChange(!checked)}
