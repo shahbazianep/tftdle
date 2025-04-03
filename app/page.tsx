@@ -43,6 +43,7 @@ export default function Home() {
     const [hintsEnabled, setHintsEnabled] = useState<boolean>(false);
     const [showAnalysisExplanation, setShowAnalysisExplanation] =
         useState<boolean>(false);
+    const [winLoading, setWinLoading] = useState<boolean>(true);
 
     const correctCategoriesRef = useRef(correctCategories);
 
@@ -476,149 +477,157 @@ export default function Home() {
                 <link rel="preload" href="/background.webp" as="image" />
                 <link rel="preconnect" href={supabaseUrl} />
             </Head>
-            {champs && filteredChamps && answer && (
+            <div
+                className={`flex flex-col items-center ${
+                    guesses.length === 0 ? "justify-center" : ""
+                } flex-grow w-full text-black pb-10`}
+            >
+                <div className="w-screen h-screen fixed -z-50">
+                    <Image
+                        src={"/background.webp"}
+                        height={4096}
+                        width={5760}
+                        priority
+                        loading="eager"
+                        alt="Background"
+                    />
+                </div>
+
                 <div
-                    className={`flex flex-col items-center ${
-                        guesses.length === 0 ? "justify-center" : ""
-                    } flex-grow w-full text-black pb-10`}
+                    className={`w-[500px] relative ${
+                        guesses.length !== 0 ? "mt-32" : ""
+                    }`}
                 >
-                    <div className="w-screen h-screen fixed -z-50">
-                        <Image
-                            src={"/background.webp"}
-                            height={4096}
-                            width={5760}
-                            priority
-                            loading="eager"
-                            alt="Background"
-                        />
+                    <Image
+                        src={"/logo.webp"}
+                        height={375}
+                        width={1258}
+                        alt="Logo"
+                        priority
+                        loading="eager"
+                        quality={75}
+                        sizes="(max-width: 768px) 80vw, 50vw"
+                    />
+                </div>
+                {!finished && (
+                    <div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
+                        Guess today&apos;s TFT champion!
                     </div>
-
-                    <div
-                        className={`w-[500px] relative ${
-                            guesses.length !== 0 ? "mt-32" : ""
-                        }`}
-                    >
-                        <Image
-                            src={"/logo.webp"}
-                            height={375}
-                            width={1258}
-                            alt="Logo"
-                            priority
-                            loading="eager"
-                            quality={75}
-                            sizes="(max-width: 768px) 80vw, 50vw"
-                        />
-                    </div>
-                    {!finished && (
-                        <div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
-                            Guess today&apos;s TFT champion!
+                )}
+                {!finished && champs && filteredChamps && answer ? (
+                    <div className="flex flex-row justify-center items-center relative mb-4">
+                        <div
+                            className="rounded-full w-9 h-9 bg-[#4C6FFA] absolute z-10 right-1.5 cursor-pointer flex items-center justify-center"
+                            onClick={() => {
+                                if (
+                                    filteredChamps.length > 0 &&
+                                    query.length > 0
+                                ) {
+                                    setQuery("");
+                                    setGuesses([
+                                        champs.indexOf(filteredChamps[0]),
+                                        ...guesses,
+                                    ]);
+                                    setFinished(filteredChamps[0] === answer);
+                                    document.getElementById("search")?.focus();
+                                }
+                            }}
+                        >
+                            <IoMdArrowForward className="text-white w-6 h-6" />
                         </div>
-                    )}
-                    {!finished && (
-                        <div className="flex flex-row justify-center items-center relative mb-4">
-                            <div
-                                className="rounded-full w-9 h-9 bg-[#4C6FFA] absolute z-10 right-1.5 cursor-pointer flex items-center justify-center"
-                                onClick={() => {
-                                    if (
-                                        filteredChamps.length > 0 &&
-                                        query.length > 0
-                                    ) {
-                                        setQuery("");
-                                        setGuesses([
-                                            champs.indexOf(filteredChamps[0]),
-                                            ...guesses,
-                                        ]);
-                                        setFinished(
-                                            filteredChamps[0] === answer
-                                        );
-                                        document
-                                            .getElementById("search")
-                                            ?.focus();
-                                    }
-                                }}
-                            >
-                                <IoMdArrowForward className="text-white w-6 h-6" />
-                            </div>
-                            <input
-                                className={`w-96 px-5 pr-16 h-12 bg-slate-50 ${
-                                    query === "" || filteredChamps.length === 0
-                                        ? "rounded-3xl"
-                                        : "rounded-t-3xl"
-                                } focus:outline-none font-[Beatrice-Medium] text-[#868686]`}
-                                type="text"
-                                placeholder="Type a champion's name..."
-                                name="search"
-                                id="search"
-                                value={query}
-                                autoCorrect="off"
-                                autoComplete="off"
-                                disabled={finished}
-                                onChange={(e) => {
-                                    const newQuery = e.target.value;
-                                    setQuery(newQuery);
-                                    setFilteredChamps(
-                                        champs
-                                            .filter((champ) => {
-                                                return (
-                                                    champ.name
-                                                        .replace("'", "")
-                                                        .toLowerCase()
-                                                        .startsWith(
-                                                            newQuery.toLowerCase()
-                                                        ) &&
-                                                    !guesses.includes(
-                                                        champs.indexOf(champ)
-                                                    )
-                                                );
-                                            })
-                                            .sort((a, b) => {
-                                                if (a.name > b.name) {
-                                                    return 1;
-                                                } else if (a.name < b.name) {
-                                                    return -1;
-                                                } else if (a.set > b.set) {
-                                                    return 1;
-                                                } else {
-                                                    return -1;
-                                                }
-                                            })
-                                    );
-                                }}
-                                onKeyDown={(e) => {
-                                    if (
-                                        e.key == "Enter" &&
-                                        filteredChamps.length > 0
-                                    ) {
-                                        setQuery("");
-                                        setGuesses([
-                                            champs.indexOf(filteredChamps[0]),
-                                            ...guesses,
-                                        ]);
-                                        setFinished(
-                                            filteredChamps[0] === answer
-                                        );
-                                        document
-                                            .getElementById("search")
-                                            ?.focus();
-                                    }
-                                }}
-                            />
-
-                            {query.length > 0 && filteredChamps.length > 0 ? (
-                                <div className="absolute top-12 max-h-60 w-96 rounded-b-xl overflow-y-auto custom-scrollbar">
-                                    <div
-                                        className={`bg-slate-50 py-0 ${
-                                            filteredChamps.length > 0
-                                                ? ""
-                                                : "hidden"
-                                        }`}
-                                    >
-                                        {filteredChamps.map((champ, index) => {
+                        <input
+                            className={`w-96 px-5 pr-16 h-12 bg-slate-50 ${
+                                query === "" || filteredChamps.length === 0
+                                    ? "rounded-3xl"
+                                    : "rounded-t-3xl"
+                            } focus:outline-none font-[Beatrice-Medium] text-[#868686]`}
+                            type="text"
+                            placeholder="Type a champion's name..."
+                            name="search"
+                            id="search"
+                            value={query}
+                            autoCorrect="off"
+                            autoComplete="off"
+                            disabled={finished}
+                            onChange={(e) => {
+                                const newQuery = e.target.value;
+                                setQuery(newQuery);
+                                setFilteredChamps(
+                                    champs
+                                        .filter((champ) => {
                                             return (
-                                                <div
-                                                    key={index}
-                                                    className="shrink-0 flex h-8 px-5 py-6 bg-slate-50 items-center focus:outline-none focus:bg-[#bdbacc] hover:bg-[#bdbacc] relative cursor-pointer z-50"
-                                                    onClick={() => {
+                                                champ.name
+                                                    .replace("'", "")
+                                                    .toLowerCase()
+                                                    .startsWith(
+                                                        newQuery.toLowerCase()
+                                                    ) &&
+                                                !guesses.includes(
+                                                    champs.indexOf(champ)
+                                                )
+                                            );
+                                        })
+                                        .sort((a, b) => {
+                                            if (a.name > b.name) {
+                                                return 1;
+                                            } else if (a.name < b.name) {
+                                                return -1;
+                                            } else if (a.set > b.set) {
+                                                return 1;
+                                            } else {
+                                                return -1;
+                                            }
+                                        })
+                                );
+                            }}
+                            onKeyDown={(e) => {
+                                if (
+                                    e.key == "Enter" &&
+                                    filteredChamps.length > 0
+                                ) {
+                                    setQuery("");
+                                    setGuesses([
+                                        champs.indexOf(filteredChamps[0]),
+                                        ...guesses,
+                                    ]);
+                                    setFinished(filteredChamps[0] === answer);
+                                    document.getElementById("search")?.focus();
+                                }
+                            }}
+                        />
+
+                        {query.length > 0 && filteredChamps.length > 0 ? (
+                            <div className="absolute top-12 max-h-60 w-96 rounded-b-xl overflow-y-auto custom-scrollbar">
+                                <div
+                                    className={`bg-slate-50 py-0 ${
+                                        filteredChamps.length > 0
+                                            ? ""
+                                            : "hidden"
+                                    }`}
+                                >
+                                    {filteredChamps.map((champ, index) => {
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="shrink-0 flex h-8 px-5 py-6 bg-slate-50 items-center focus:outline-none focus:bg-[#bdbacc] hover:bg-[#bdbacc] relative cursor-pointer z-50"
+                                                onClick={() => {
+                                                    setQuery("");
+                                                    setGuesses([
+                                                        champs.indexOf(champ),
+                                                        ...guesses,
+                                                    ]);
+                                                    setFinished(
+                                                        champ === answer
+                                                    );
+                                                    document
+                                                        .getElementById(
+                                                            "search"
+                                                        )
+                                                        ?.focus();
+                                                }}
+                                                tabIndex={0}
+                                                onKeyDown={(e) => {
+                                                    if (e.key == "Enter") {
                                                         setQuery("");
                                                         setGuesses([
                                                             champs.indexOf(
@@ -634,130 +643,113 @@ export default function Home() {
                                                                 "search"
                                                             )
                                                             ?.focus();
-                                                    }}
-                                                    tabIndex={0}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key == "Enter") {
-                                                            setQuery("");
-                                                            setGuesses([
-                                                                champs.indexOf(
-                                                                    champ
-                                                                ),
-                                                                ...guesses,
-                                                            ]);
-                                                            setFinished(
-                                                                champ === answer
-                                                            );
-                                                            document
-                                                                .getElementById(
-                                                                    "search"
-                                                                )
-                                                                ?.focus();
+                                                    }
+                                                }}
+                                            >
+                                                <div className="w-8 h-8 relative mr-3 rounded-md overflow-hidden">
+                                                    <Image
+                                                        src={
+                                                            champ.icon.startsWith(
+                                                                "//"
+                                                            )
+                                                                ? "https:" +
+                                                                  champ.icon
+                                                                : champ.icon
                                                         }
-                                                    }}
-                                                >
-                                                    <div className="w-8 h-8 relative mr-3 rounded-md overflow-hidden">
-                                                        <Image
-                                                            src={
-                                                                champ.icon.startsWith(
-                                                                    "//"
-                                                                )
-                                                                    ? "https:" +
-                                                                      champ.icon
-                                                                    : champ.icon
-                                                            }
-                                                            alt="Champion Image"
-                                                            height={32}
-                                                            width={32}
-                                                        />
-                                                    </div>
-                                                    <span className="font-[Beatrice-Medium]">
-                                                        {champ.name +
-                                                            " - Set " +
-                                                            champ.set}
-                                                    </span>
+                                                        alt="Champion Image"
+                                                        height={32}
+                                                        width={32}
+                                                    />
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                                <span className="font-[Beatrice-Medium]">
+                                                    {champ.name +
+                                                        " - Set " +
+                                                        champ.set}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ) : (
-                                <div className="hidden"></div>
-                            )}
-                        </div>
-                    )}
-                    {resultsClosed && finished && (
-                        <div
-                            className="relative text-white mt-12 mb-12"
-                            id="results"
-                        >
-                            <Image
-                                src={"/win.webp"}
-                                alt="Kobuko"
-                                width={440}
-                                height={319}
-                                style={{ position: "absolute", zIndex: -1 }}
-                            />
-                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2 font-[Beatrice-Medium]">
-                                <span className="text-5xl font-[Beatrice-Extrabold] mt-6">
-                                    VICTORY
+                            </div>
+                        ) : (
+                            <div className="hidden"></div>
+                        )}
+                    </div>
+                ) : (
+                    !finished && (
+                        <div className="w-96 px-5 pr-16 h-12 bg-slate-50 rounded-3xl mb-4"></div>
+                    )
+                )}
+                {resultsClosed && finished && answer && (
+                    <div
+                        className="relative text-white mt-12 mb-12"
+                        id="results"
+                    >
+                        <Image
+                            src={"/win.webp"}
+                            alt="Kobuko"
+                            width={440}
+                            height={319}
+                            style={{ position: "absolute", zIndex: -1 }}
+                        />
+                        <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2 font-[Beatrice-Medium]">
+                            <span className="text-5xl font-[Beatrice-Extrabold] mt-6">
+                                VICTORY
+                            </span>
+                            <span className="mt-60 mb-2">You guessed</span>
+                            <span className="text-3xl font-[Beatrice-Extrabold]">
+                                {answer.name}
+                            </span>
+                            <span className="font-[Beatrice-MediumItalic]">
+                                {"SET " + answer.set}
+                            </span>
+                            <span className="text-sm mt-4 mb-2">
+                                {"Number of tries: "}
+                                <span className="text-[#FFB131]">
+                                    {guesses.length}
                                 </span>
-                                <span className="mt-60 mb-2">You guessed</span>
-                                <span className="text-3xl font-[Beatrice-Extrabold]">
-                                    {answer.name}
-                                </span>
-                                <span className="font-[Beatrice-MediumItalic]">
-                                    {"SET " + answer.set}
-                                </span>
-                                <span className="text-sm mt-4 mb-2">
-                                    {"Number of tries: "}
-                                    <span className="text-[#FFB131]">
-                                        {guesses.length}
-                                    </span>
-                                </span>
-                                <button
-                                    className="text-[#31217D] rounded-lg bg-white px-2 py-1 mt-2 mb-6 w-20 text-sm font-[Beatrice-Extrabold] cursor-pointer flex flex-row gap-x-1 items-center"
-                                    onClick={() => setShowStats(true)}
-                                >
-                                    <IoIosStats className="text-base" />
-                                    <span className="mt-0.5">STATS</span>
-                                </button>
-                                <span className="text-sm">
-                                    Next champion in
-                                </span>
-                                <span className="font-[Beatrice-Extrabold] text-2xl">
-                                    {timeLeft.hours
+                            </span>
+                            <button
+                                className="text-[#31217D] rounded-lg bg-white px-2 py-1 mt-2 mb-6 w-20 text-sm font-[Beatrice-Extrabold] cursor-pointer flex flex-row gap-x-1 items-center"
+                                onClick={() => setShowStats(true)}
+                            >
+                                <IoIosStats className="text-base" />
+                                <span className="mt-0.5">STATS</span>
+                            </button>
+                            <span className="text-sm">Next champion in</span>
+                            <span className="font-[Beatrice-Extrabold] text-2xl">
+                                {timeLeft.hours.toString().padStart(2, "0") +
+                                    ":" +
+                                    timeLeft.minutes
                                         .toString()
                                         .padStart(2, "0") +
-                                        ":" +
-                                        timeLeft.minutes
-                                            .toString()
-                                            .padStart(2, "0") +
-                                        ":" +
-                                        timeLeft.seconds
-                                            .toString()
-                                            .padStart(2, "0")}
-                                </span>
-                                <span className="text-xs text-[#868686] font-[Beatrice-MediumItalic]">
-                                    Timezone: Pacific Standard Time (UTC-8)
-                                </span>
-                            </div>
+                                    ":" +
+                                    timeLeft.seconds
+                                        .toString()
+                                        .padStart(2, "0")}
+                            </span>
+                            <span className="text-xs text-[#868686] font-[Beatrice-MediumItalic]">
+                                Timezone: Pacific Standard Time (UTC-8)
+                            </span>
                         </div>
-                    )}
-                    <div>
-                        <div
-                            className={`grid grid-cols-6 gap-2 p-4 text-white text-center text-sm font-[Beatrice-Extrabold] ${
-                                guesses.length === 0 ? "hidden" : ""
-                            }`}
-                        >
-                            <span>NAME</span>
-                            <span>SET</span>
-                            <span>COST</span>
-                            <span>GENDER</span>
-                            <span>RANGE</span>
-                            <span>TRAITS</span>
-                        </div>
-                        {guesses.map((guess) => {
+                    </div>
+                )}
+                <div>
+                    <div
+                        className={`grid grid-cols-6 gap-2 p-4 text-white text-center text-sm font-[Beatrice-Extrabold] ${
+                            guesses.length === 0 ? "hidden" : ""
+                        }`}
+                    >
+                        <span>NAME</span>
+                        <span>SET</span>
+                        <span>COST</span>
+                        <span>GENDER</span>
+                        <span>RANGE</span>
+                        <span>TRAITS</span>
+                    </div>
+                    {champs &&
+                        answer &&
+                        guesses.map((guess) => {
                             const { set, cost, gender, range, traits, icon } =
                                 champs[guess];
                             return (
@@ -824,279 +816,280 @@ export default function Home() {
                                 </div>
                             );
                         })}
+                </div>
+                <Switch checked={hintsEnabled} onChange={setHintsEnabled} />
+                {showIndicators && (
+                    <div
+                        className={`flex flex-col items-center justify-center gap-2 mt-12 mb-8 p-4 bg-[#31217D]/55 rounded-2xl text-white font-[Beatrice-Extrabold] relative ${
+                            guesses.length === 0 ? "hidden" : ""
+                        }`}
+                    >
+                        <IoClose
+                            className="absolute top-5 right-5 text-white cursor-pointer"
+                            onClick={() => {
+                                setShowIndicators(false);
+                            }}
+                        />
+                        {"INDICATORS"}
+                        <div className="grid grid-cols-5 gap-2 mb-3 text-white">
+                            <Tile guess={"Correct"} correctValue={"Correct"} />
+                            <Tile
+                                guess={["Partial"]}
+                                correctValue={["Partial", ""]}
+                            />
+                            <Tile guess={"Wrong"} correctValue={""} />
+                            <Tile
+                                guess={"Higher"}
+                                correctValue={"Z"}
+                                field="set"
+                                hintsEnabled
+                            />
+                            <Tile
+                                guess={"Lower"}
+                                correctValue={""}
+                                field="set"
+                                hintsEnabled
+                            />
+                        </div>
                     </div>
-                    <Switch checked={hintsEnabled} onChange={setHintsEnabled} />
-                    {showIndicators && (
+                )}
+
+                {finished && !resultsClosed && answer && (
+                    <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-Medium]">
                         <div
-                            className={`flex flex-col items-center justify-center gap-2 mt-12 mb-8 p-4 bg-[#31217D]/55 rounded-2xl text-white font-[Beatrice-Extrabold] relative ${
-                                guesses.length === 0 ? "hidden" : ""
+                            className={`flex flex-col h-[614px] w-[440px] items-center rounded-2xl absolute p-2 bg-[#31217D] ${
+                                winLoading ? "opacity-100" : "opacity-0"
                             }`}
-                        >
+                        />
+                        <Image
+                            src={"/win.webp"}
+                            alt="Kobuko"
+                            priority
+                            width={440}
+                            height={319}
+                            style={{
+                                position: "absolute",
+                                opacity: winLoading ? 0 : 1,
+                                zIndex: -1,
+                            }}
+                            onLoadingComplete={() => {
+                                setWinLoading(false);
+                            }}
+                        />
+
+                        <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2">
                             <IoClose
                                 className="absolute top-5 right-5 text-white cursor-pointer"
                                 onClick={() => {
-                                    setShowIndicators(false);
+                                    setResultsClosed(true);
                                 }}
                             />
-                            {"INDICATORS"}
-                            <div className="grid grid-cols-5 gap-2 mb-3 text-white">
-                                <Tile
-                                    guess={"Correct"}
-                                    correctValue={"Correct"}
-                                />
-                                <Tile
-                                    guess={["Partial"]}
-                                    correctValue={["Partial", ""]}
-                                />
-                                <Tile guess={"Wrong"} correctValue={""} />
-                                <Tile
-                                    guess={"Higher"}
-                                    correctValue={"Z"}
-                                    field="set"
-                                    hintsEnabled
-                                />
-                                <Tile
-                                    guess={"Lower"}
-                                    correctValue={""}
-                                    field="set"
-                                    hintsEnabled
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {finished && !resultsClosed && (
-                        <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-Medium]">
-                            <Image
-                                src={"/win.webp"}
-                                alt="Kobuko"
-                                priority
-                                width={440}
-                                height={319}
-                                style={{ position: "absolute", zIndex: -1 }}
-                            />
-                            <div className="flex flex-col h-[614px] w-[440px] items-center rounded-2xl relative p-2">
-                                <IoClose
-                                    className="absolute top-5 right-5 text-white cursor-pointer"
-                                    onClick={() => {
-                                        setResultsClosed(true);
-                                    }}
-                                />
-                                <span className="text-5xl font-[Beatrice-Extrabold] mt-4">
-                                    VICTORY
+                            <span className="text-5xl font-[Beatrice-Extrabold] mt-4">
+                                VICTORY
+                            </span>
+                            <span className="mt-62 mb-2">You guessed</span>
+                            <span className="text-3xl font-[Beatrice-Extrabold]">
+                                {answer.name}
+                            </span>
+                            <span className="font-[Beatrice-MediumItalic]">
+                                {"SET " + answer.set}
+                            </span>
+                            <span className="text-sm mt-4 mb-2">
+                                {"Number of tries: "}
+                                <span className="text-[#FFB131]">
+                                    {guesses.length}
                                 </span>
-                                <span className="mt-62 mb-2">You guessed</span>
-                                <span className="text-3xl font-[Beatrice-Extrabold]">
-                                    {answer.name}
-                                </span>
-                                <span className="font-[Beatrice-MediumItalic]">
-                                    {"SET " + answer.set}
-                                </span>
-                                <span className="text-sm mt-4 mb-2">
-                                    {"Number of tries: "}
-                                    <span className="text-[#FFB131]">
-                                        {guesses.length}
-                                    </span>
-                                </span>
-                                <button
-                                    className="text-[#31217D] rounded-lg bg-white px-2 py-1 mt-2 mb-6 w-20 text-sm font-[Beatrice-Extrabold] cursor-pointer flex flex-row gap-x-1 items-center"
-                                    onClick={() => {
-                                        setShowStats(true);
-                                        document
-                                            .getElementById("results")
-                                            ?.scrollIntoView();
-                                        setResultsClosed(true);
-                                    }}
-                                >
-                                    <IoIosStats className="text-base" />
-                                    <span className="mt-0.5">STATS</span>
-                                </button>
-                                <span className="text-sm">
-                                    Next champion in
-                                </span>
-                                <span className="font-[Beatrice-Extrabold] text-2xl">
-                                    {timeLeft.hours
+                            </span>
+                            <button
+                                className="text-[#31217D] rounded-lg bg-white px-2 py-1 mt-2 mb-6 w-20 text-sm font-[Beatrice-Extrabold] cursor-pointer flex flex-row gap-x-1 items-center"
+                                onClick={() => {
+                                    setShowStats(true);
+                                    document
+                                        .getElementById("results")
+                                        ?.scrollIntoView();
+                                    setResultsClosed(true);
+                                }}
+                            >
+                                <IoIosStats className="text-base" />
+                                <span className="mt-0.5">STATS</span>
+                            </button>
+                            <span className="text-sm">Next champion in</span>
+                            <span className="font-[Beatrice-Extrabold] text-2xl">
+                                {timeLeft.hours.toString().padStart(2, "0") +
+                                    ":" +
+                                    timeLeft.minutes
                                         .toString()
                                         .padStart(2, "0") +
-                                        ":" +
-                                        timeLeft.minutes
-                                            .toString()
-                                            .padStart(2, "0") +
-                                        ":" +
-                                        timeLeft.seconds
-                                            .toString()
-                                            .padStart(2, "0")}
-                                </span>
-                                <span className="text-xs text-[#868686] font-[Beatrice-MediumItalic]">
-                                    Timezone: Pacific Standard Time (UTC-8)
-                                </span>
-                            </div>
+                                    ":" +
+                                    timeLeft.seconds
+                                        .toString()
+                                        .padStart(2, "0")}
+                            </span>
+                            <span className="text-xs text-[#868686] font-[Beatrice-MediumItalic]">
+                                Timezone: Pacific Standard Time (UTC-8)
+                            </span>
                         </div>
-                    )}
-                    {showStats && (
-                        <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-ExtraBold] z-50">
-                            <div className="flex flex-col h-[500px] w-[800px] rounded-2xl relative bg-[#31217D] p-12">
-                                <IoClose
-                                    className="absolute top-5 right-5 text-white cursor-pointer"
-                                    onClick={() => {
-                                        setShowStats(false);
-                                    }}
-                                />
-                                <div className="flex flex-col w-full items-center justify-between h-full">
-                                    <div className="flex flex-row items-center justify-center w-full gap-x-4">
-                                        <IoStatsChart size={32} />
-                                        <span className="text-5xl font-[Beatrice-Extrabold]">
-                                            STATISTICS
+                    </div>
+                )}
+                {showStats && (
+                    <div className="top-0 left-0 w-screen h-screen bg-black/50 flex flex-col items-center justify-center text-center backdrop-blur-md fixed text-white font-[Beatrice-ExtraBold] z-50">
+                        <div className="flex flex-col h-[500px] w-[800px] rounded-2xl relative bg-[#31217D] p-12">
+                            <IoClose
+                                className="absolute top-5 right-5 text-white cursor-pointer"
+                                onClick={() => {
+                                    setShowStats(false);
+                                }}
+                            />
+                            <div className="flex flex-col w-full items-center justify-between h-full">
+                                <div className="flex flex-row items-center justify-center w-full gap-x-4">
+                                    <IoStatsChart size={32} />
+                                    <span className="text-5xl font-[Beatrice-Extrabold]">
+                                        STATISTICS
+                                    </span>
+                                </div>
+                                <div className="flex flex-row justify-between w-4/5">
+                                    <div className="flex flex-col text-4xl gap-y-1">
+                                        <span>{stats?.gamesPlayed}</span>
+                                        <span className="text-wrap text-[#52429D] text-lg leading-none">
+                                            WON
                                         </span>
                                     </div>
-                                    <div className="flex flex-row justify-between w-4/5">
-                                        <div className="flex flex-col text-4xl gap-y-1">
-                                            <span>{stats?.gamesPlayed}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
-                                                WON
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col text-4xl gap-y-1">
-                                            <span>{stats?.flawless}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
-                                                FLAWLESS
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col text-4xl gap-y-1">
-                                            <span>
-                                                {stats?.gamesPlayed &&
-                                                stats?.totalGuesses
-                                                    ? (
-                                                          stats.totalGuesses /
-                                                          stats.gamesPlayed
-                                                      ).toFixed(1)
-                                                    : "N/A"}
-                                            </span>
-                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
-                                                AVG
-                                                <br />
-                                                GUESSES
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col text-4xl gap-y-1">
-                                            <span>{stats?.currentStreak}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
-                                                CURRENT
-                                                <br />
-                                                STREAK
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col text-4xl gap-y-1">
-                                            <span>{stats?.maxStreak}</span>
-                                            <span className="text-wrap text-[#52429D] text-lg leading-none">
-                                                MAX
-                                                <br />
-                                                STREAK
-                                            </span>
-                                        </div>
+                                    <div className="flex flex-col text-4xl gap-y-1">
+                                        <span>{stats?.flawless}</span>
+                                        <span className="text-wrap text-[#52429D] text-lg leading-none">
+                                            FLAWLESS
+                                        </span>
                                     </div>
-                                    <div className="flex flex-row justify-center w-full gap-x-4">
-                                        <div className="flex flex-col gap-y-4 w-full">
-                                            <div className="w-full flex flex-row items-center">
-                                                <div
-                                                    className="rounded-br-full rounded-tr-full h-16 bg-[#A3C751] mr-4 flex items-center justify-end p-4 text-2xl"
-                                                    style={{
-                                                        width:
-                                                            (
-                                                                Math.max(
-                                                                    stats!
-                                                                        .score,
-                                                                    30
-                                                                ) * 4
-                                                            ).toFixed(0) + "px",
-                                                    }}
-                                                >
-                                                    {stats!.score.toFixed(0)}%
-                                                </div>
-                                                <div className="text-[#85F2A7] text-lg">
-                                                    TODAY
-                                                </div>
-                                            </div>
-                                            <div className="w-full flex flex-row items-center">
-                                                <div
-                                                    className="rounded-br-full rounded-tr-full h-16 bg-[#4C6FFA] mr-4 flex items-center justify-end p-4 text-2xl"
-                                                    style={{
-                                                        width:
-                                                            (
-                                                                Math.max(
-                                                                    stats!
-                                                                        .score,
-                                                                    30
-                                                                ) * 4
-                                                            ).toFixed(0) + "px",
-                                                    }}
-                                                >
-                                                    {stats!.cumulativeScore.toFixed(
-                                                        0
-                                                    )}
-                                                    %
-                                                </div>
-                                                <div className="text-[#85F2A7] text-lg">
-                                                    CUMULATIVE
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl text-left h-full flex flex-col justify-center relative">
-                                            <span>
-                                                TFTDLE
-                                                <span className="text-[#85F2A7]">
-                                                    BOT
-                                                </span>
-                                            </span>
-                                            ANALYSIS SCORE
-                                            <span
-                                                className="absolute bottom-1 text-[#868686] text-xs flex flex-row items-center gap-x-1 font-[Beatrice-MediumItalic] cursor-help"
-                                                onMouseEnter={() => {
-                                                    setShowAnalysisExplanation(
-                                                        true
-                                                    );
-                                                }}
-                                                onMouseLeave={() => {
-                                                    setShowAnalysisExplanation(
-                                                        false
-                                                    );
+                                    <div className="flex flex-col text-4xl gap-y-1">
+                                        <span>
+                                            {stats?.gamesPlayed &&
+                                            stats?.totalGuesses
+                                                ? (
+                                                      stats.totalGuesses /
+                                                      stats.gamesPlayed
+                                                  ).toFixed(1)
+                                                : "N/A"}
+                                        </span>
+                                        <span className="text-wrap text-[#52429D] text-lg leading-none">
+                                            AVG
+                                            <br />
+                                            GUESSES
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col text-4xl gap-y-1">
+                                        <span>{stats?.currentStreak}</span>
+                                        <span className="text-wrap text-[#52429D] text-lg leading-none">
+                                            CURRENT
+                                            <br />
+                                            STREAK
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col text-4xl gap-y-1">
+                                        <span>{stats?.maxStreak}</span>
+                                        <span className="text-wrap text-[#52429D] text-lg leading-none">
+                                            MAX
+                                            <br />
+                                            STREAK
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-row justify-center w-full gap-x-4">
+                                    <div className="flex flex-col gap-y-4 w-full">
+                                        <div className="w-full flex flex-row items-center">
+                                            <div
+                                                className="rounded-br-full rounded-tr-full h-16 bg-[#A3C751] mr-4 flex items-center justify-end p-4 text-2xl"
+                                                style={{
+                                                    width:
+                                                        (
+                                                            Math.max(
+                                                                stats!.score,
+                                                                30
+                                                            ) * 4
+                                                        ).toFixed(0) + "px",
                                                 }}
                                             >
-                                                <IoIosInformationCircle />
-                                                <span className="mt-[1px]">
-                                                    What&apos;s this?
-                                                </span>
-                                            </span>
-                                            {showAnalysisExplanation && (
-                                                <div className="top-full bg-white rounded-2xl w-72 absolute flex flex-col items-center text-[#2B2061] text-xs p-4">
-                                                    <span>
-                                                        TFTDLEBOT ANALYSIS SCORE
-                                                    </span>
-                                                    <span className="font-[Beatrice-Medium] mt-2">
-                                                        The TFTdleBot analysis
-                                                        score is a measure of
-                                                        your performance
-                                                        compared to the optimal
-                                                        solution found by
-                                                        TFTdleBot. Scores are
-                                                        calculated in a
-                                                        nonlinear fashion
-                                                        ranging from 100 (you
-                                                        beat the bot) to 0. The
-                                                        cumulative score
-                                                        measures your
-                                                        performance over time.
-                                                    </span>
-                                                </div>
-                                            )}
+                                                {stats!.score.toFixed(0)}%
+                                            </div>
+                                            <div className="text-[#85F2A7] text-lg">
+                                                TODAY
+                                            </div>
                                         </div>
+                                        <div className="w-full flex flex-row items-center">
+                                            <div
+                                                className="rounded-br-full rounded-tr-full h-16 bg-[#4C6FFA] mr-4 flex items-center justify-end p-4 text-2xl"
+                                                style={{
+                                                    width:
+                                                        (
+                                                            Math.max(
+                                                                stats!.score,
+                                                                30
+                                                            ) * 4
+                                                        ).toFixed(0) + "px",
+                                                }}
+                                            >
+                                                {stats!.cumulativeScore.toFixed(
+                                                    0
+                                                )}
+                                                %
+                                            </div>
+                                            <div className="text-[#85F2A7] text-lg">
+                                                CUMULATIVE
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl text-left h-full flex flex-col justify-center relative">
+                                        <span>
+                                            TFTDLE
+                                            <span className="text-[#85F2A7]">
+                                                BOT
+                                            </span>
+                                        </span>
+                                        ANALYSIS SCORE
+                                        <span
+                                            className="absolute bottom-1 text-[#868686] text-xs flex flex-row items-center gap-x-1 font-[Beatrice-MediumItalic] cursor-help"
+                                            onMouseEnter={() => {
+                                                setShowAnalysisExplanation(
+                                                    true
+                                                );
+                                            }}
+                                            onMouseLeave={() => {
+                                                setShowAnalysisExplanation(
+                                                    false
+                                                );
+                                            }}
+                                        >
+                                            <IoIosInformationCircle />
+                                            <span className="mt-[1px]">
+                                                What&apos;s this?
+                                            </span>
+                                        </span>
+                                        {showAnalysisExplanation && (
+                                            <div className="top-full bg-white rounded-2xl w-72 absolute flex flex-col items-center text-[#2B2061] text-xs p-4">
+                                                <span>
+                                                    TFTDLEBOT ANALYSIS SCORE
+                                                </span>
+                                                <span className="font-[Beatrice-Medium] mt-2">
+                                                    The TFTdleBot analysis score
+                                                    is a measure of your
+                                                    performance compared to the
+                                                    optimal solution found by
+                                                    TFTdleBot. Scores are
+                                                    calculated in a nonlinear
+                                                    fashion ranging from 100
+                                                    (you beat the bot) to 0. The
+                                                    cumulative score measures
+                                                    your performance over time.
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
+            )
             <div className="mt-auto flex flex-col items-center pb-4">
                 <div className="text-white font-[Beatrice-Medium] text-sm mb-2">
                     tftdle | 2025
