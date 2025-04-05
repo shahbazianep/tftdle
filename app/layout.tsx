@@ -7,6 +7,9 @@ export const metadata: Metadata = {
     title: "TFTdle",
     description:
         "TFTdle is a daily Teamfight Tactics guessing game where you try to identify the hidden champion based on traits, cost, and other attributes. Test your knowledge and improve your strategy with every guess!",
+    icons: {
+        icon: "/favicon.ico",
+    },
 };
 
 export default function RootLayout({
