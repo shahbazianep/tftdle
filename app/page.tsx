@@ -473,11 +473,11 @@ export default function Home() {
 	// }, [guesses, champs]);
 
 	return (
-		<div className="flex flex-grow min-h-screen flex-col">
+		<div className="flex flex-grow min-h-screen flex-col bg-[url(/background.webp)] bg-cover bg-center">
 			<Head>
+				<link rel="preload" href="/background.webp" as="image" />
 				<link rel="preload" href="/logo.webp" as="image" />
 				<link rel="preload" href="/win.webp" as="image" />
-				<link rel="preload" href="/background.webp" as="image" />
 				<link rel="preconnect" href={supabaseUrl} />
 			</Head>
 			<div
@@ -485,19 +485,8 @@ export default function Home() {
 					guesses.length === 0 ? "justify-center" : ""
 				} flex-grow w-full text-black pb-10`}
 			>
-				<div className="w-screen h-screen fixed -z-50">
-					<Image
-						src={"/background.webp"}
-						height={4096}
-						width={5760}
-						priority
-						loading="eager"
-						alt="Background"
-					/>
-				</div>
-
 				<div
-					className={`w-[500px] relative ${
+					className={`w-[300px] sm:w-[500px] relative ${
 						guesses.length !== 0 ? "mt-32" : ""
 					}`}
 				>
@@ -513,12 +502,12 @@ export default function Home() {
 					/>
 				</div>
 				{!finished && (
-					<div className="text-white font-[Beatrice-Extrabold] text-4xl mt-10 mb-10">
+					<div className="text-white font-[Beatrice-Extrabold] px-4 text-center text-2xl sm:text-4xl mt-10 mb-10">
 						Guess today&apos;s TFT champion!
 					</div>
 				)}
 				{!finished && champs && filteredChamps && answer ? (
-					<div className="flex flex-row justify-center items-center relative mb-4">
+					<div className="flex flex-row justify-center items-center relative mb-4 max-w-[80vw]">
 						<div
 							className="rounded-full w-9 h-9 bg-[#4C6FFA] absolute z-10 right-1.5 cursor-pointer flex items-center justify-center"
 							onClick={() => {
@@ -600,7 +589,7 @@ export default function Home() {
 						/>
 
 						{query.length > 0 && filteredChamps.length > 0 ? (
-							<div className="absolute top-12 max-h-60 w-96 rounded-b-xl overflow-y-auto custom-scrollbar">
+							<div className="absolute top-12 max-h-60 w-96 rounded-b-xl overflow-y-auto custom-scrollbar max-w-[80vw]">
 								<div
 									className={`bg-slate-50 py-0 ${
 										filteredChamps.length > 0
@@ -649,20 +638,14 @@ export default function Home() {
 													}
 												}}
 											>
-												<div className="w-8 h-8 relative mr-3 rounded-md overflow-hidden">
+												<div className="w-8 h-8 relative mr-3 rounded-md overflow-hidden bg-gray-700">
 													<Image
-														src={
-															champ.icon.startsWith(
-																"//"
-															)
-																? "https:" +
-																  champ.icon
-																: champ.icon
-														}
+														src={`https://agsrvobraxzuakdshjqm.supabase.co/storage/v1/object/public/images/Set%20${champ.set}/Set${champ.set}-${champ.name}.webp`}
 														alt="Champion Image"
 														height={32}
 														width={32}
 														unoptimized
+														onError={() => {}}
 													/>
 												</div>
 												<span className="font-[Beatrice-Medium]">
@@ -681,7 +664,7 @@ export default function Home() {
 					</div>
 				) : (
 					!finished && (
-						<div className="w-96 px-5 pr-16 h-12 bg-slate-50 rounded-3xl mb-4"></div>
+						<div className="w-96 px-5 pr-16 h-12 bg-slate-50 max-w-[80vw] rounded-3xl mb-4"></div>
 					)
 				)}
 				{resultsClosed && finished && answer && (
@@ -740,7 +723,7 @@ export default function Home() {
 				)}
 				<div>
 					<div
-						className={`grid grid-cols-6 gap-2 p-4 text-white text-center text-sm font-[Beatrice-Extrabold] ${
+						className={`grid grid-cols-6 gap-2 p-4 text-white text-center text-xs sm:text-sm font-[Beatrice-Extrabold] ${
 							guesses.length === 0 ? "hidden" : ""
 						}`}
 					>
@@ -754,20 +737,16 @@ export default function Home() {
 					{champs &&
 						answer &&
 						guesses.map((guess) => {
-							const { set, cost, gender, range, traits, icon } =
+							const { set, name, cost, gender, range, traits } =
 								champs[guess];
 							return (
 								<div
-									className="grid grid-cols-6 gap-2 mb-3 p-4 bg-[#31217D]/55 rounded-2xl text-white"
+									className="grid grid-cols-6 gap-2 mb-3 p-2 sm:p-4 bg-[#31217D]/55 rounded-2xl text-white"
 									key={guess}
 								>
-									<div className="w-20 h-20 flex flex-row items-center justify-center rounded-2xl overflow-hidden">
+									<div className="w-12 sm:w-20 h-12 sm:h-20 flex flex-row items-center justify-center rounded-lg sm:rounded-2xl overflow-hidden">
 										<Image
-											src={
-												icon.startsWith("//")
-													? "https:" + icon
-													: icon
-											}
+											src={`https://agsrvobraxzuakdshjqm.supabase.co/storage/v1/object/public/images/Set%20${set}/Set${set}-${name}.webp`}
 											alt="Champion Icon"
 											placeholder="blur"
 											blurDataURL="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mM0VKztAQACtwFdoQskOAAAAABJRU5ErkJggg=="
@@ -1094,12 +1073,11 @@ export default function Home() {
 					</div>
 				)}
 			</div>
-			)
 			<div className="mt-auto flex flex-col items-center pb-4">
 				<div className="text-white font-[Beatrice-Medium] text-sm mb-2">
 					tftdle | 2025
 				</div>
-				<div className="text-[#868686] font-[Beatrice-Medium] text-xs">
+				<div className="text-[#868686] font-[Beatrice-Medium] text-xs px-8">
 					tftdle was created using assets owned by Riot Games, and is
 					not endorsed or sponsored by Riot Games or its affiliates
 				</div>
